@@ -79,6 +79,40 @@ messages sur stderr également, ce qui permet de les piper sans bruit.
 - Le smoke test `scripts/smoke-mcp.ts` vérifie ce silence en parsant la
 sortie JSON-RPC.
 
+## 9. Transport HTTP distant (Vercel) — public-only
+
+En complément du transport stdio local, un transport HTTP MCP est disponible
+via les routes Vercel `api/mcp.ts` et `api/health.ts`. Sa surface d'exposition
+est **strictement plus restreinte** que le stdio local :
+
+| Aspect                          | Stdio local                                       | HTTP distant (Vercel)                                                                                          |
+| ------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Mode `internal`                 | Autorisé selon `DEFAULT_MODE`                     | **Refusé explicitement** (verrou `REMOTE_PUBLIC_ONLY=true`)                                                    |
+| Outils `*_works` / `dashboard`  | Enregistrés                                       | **Non enregistrés** par défaut (`REMOTE_ALLOW_INTERNAL_TOOLS=false`)                                           |
+| Auth                            | Aucune (process child Cursor)                     | **Bearer token optionnel** via `MCP_PUBLIC_READ_TOKEN` (recommandé en prod)                                    |
+| Réseau                          | Stdio (process)                                   | HTTPS (Vercel function, runtime nodejs20.x)                                                                    |
+| Logs                            | stderr uniquement (stdout réservé MCP)            | `console.error` (stderr) côté serveur Vercel — jamais renvoyé au client                                        |
+| `mode=restricted`               | Non implémenté                                    | Non implémenté (à arbitrer dans une release ultérieure)                                                        |
+
+Règles dures :
+
+- Le verrou `publicOnly` rejette `mode=internal` côté outil avec le message
+  explicite : *« Le transport HTTP public n'autorise pas le mode internal.
+  Utiliser le MCP local stdio ou une future passerelle restricted validée
+  DSI. »*
+- L'enregistrement des outils internal-only est conditionné à
+  `REMOTE_ALLOW_INTERNAL_TOOLS=true` (défaut `false`) — à n'activer que
+  derrière une passerelle restricted authentifiée, **non implémentée dans cette
+  release**.
+- L'auth Bearer (`MCP_PUBLIC_READ_TOKEN`) compare en *constant time* et
+  n'est jamais journalisée.
+- `/api/health` ne fait **aucun appel** vers le portail SIG — c'est un
+  diagnostic de montage, pas un audit ArcGIS.
+
+Garde-fou :
+- Aucun token SIG n'est requis ni accepté par ce code (lecture seule).
+- Pas de mode `restricted` dans cette release (ni stdio ni HTTP).
+
 ## En cas de doute
 
 - Toute couche en `requiresLegalReview` ne peut jamais être classée VERT

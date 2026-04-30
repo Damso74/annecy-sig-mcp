@@ -6,13 +6,15 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "schemas": "tsx src/contracts/exportJsonSchemas.ts",
     "schemas:check": "tsx src/contracts/checkJsonSchemas.ts",
-    "smoke:mcp": "tsx scripts/smoke-mcp.ts"
+    "smoke:mcp": "tsx scripts/smoke-mcp.ts",
+    "smoke:http": "tsx scripts/smoke-http.ts"
   },
   "engines": {
     "node": ">=20"

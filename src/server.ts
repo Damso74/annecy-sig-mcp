@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { AppConfig } from "./config.js";
 import { modeSchema } from "./utils/validation.js";
-import { isAppError } from "./utils/errors.js";
+import { isAppError, AppError } from "./utils/errors.js";
 import { runListServices } from "./tools/listServices.js";
 import { runListLayers } from "./tools/listLayers.js";
 import { runDescribeLayer } from "./tools/describeLayer.js";
@@ -24,6 +24,49 @@ import {
   validateServiceLayer,
   clampInventoryConcurrency,
 } from "./utils/validation.js";
+
+/**
+ * Options runtime passées au registre des outils. Permet aux deux bootstraps
+ * (stdio local et HTTP distant) de partager le même code de déclaration des
+ * outils sans dupliquer la logique.
+ */
+export type AnnecySigTransport = "stdio" | "http";
+
+export interface AnnecySigMcpRuntimeOptions {
+  transport: AnnecySigTransport;
+  /**
+   * Si `true`, le serveur impose `mode = "public"` :
+   *   - tout outil acceptant un `mode` voit `internal` rejeté ;
+   *   - les outils strictement internal (ex : `generate_internal_dashboard_brief`)
+   *     ne sont enregistrés que si `allowInternalTools=true`.
+   * Défaut : `false` (compat stdio local historique).
+   */
+  publicOnly?: boolean;
+  /**
+   * Autorise l'enregistrement des outils internal-only
+   * (`generate_internal_dashboard_brief`, `list_current_works`, `list_late_works`).
+   * Défaut : `true` (compat stdio local historique).
+   *
+   * En transport HTTP public, on doit le mettre à `false` explicitement.
+   */
+  allowInternalTools?: boolean;
+  /**
+   * Mode par défaut effectif si l'appelant n'en fournit pas. En remote public,
+   * fixé à `"public"` quel que soit `cfg.defaultMode`.
+   */
+  defaultMode?: "public" | "internal";
+}
+
+const DEFAULT_RUNTIME_OPTIONS: Required<AnnecySigMcpRuntimeOptions> = {
+  transport: "stdio",
+  publicOnly: false,
+  allowInternalTools: true,
+  defaultMode: "public",
+};
+
+const REMOTE_INTERNAL_REFUSAL_MESSAGE =
+  "Le transport HTTP public n'autorise pas le mode internal. " +
+  "Utiliser le MCP local stdio ou une future passerelle restricted validée DSI.";
 
 function jsonOk(data: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -48,19 +91,46 @@ function jsonErr(e: unknown) {
   };
 }
 
-export function createMcpServer(cfg: AppConfig): McpServer {
-  const server = new McpServer(
-    { name: "annecy-sig-mcp", version: SERVER_VERSION },
-    {
-      instructions:
-        "Serveur MCP lecture seule sur l’allowlist SIG Annecy (portailsig.annecy.fr). " +
-        "Modes public (champs réduits) et internal (champs étendus, jamais de secrets). " +
-        "V0.7 : schéma `source` stable (schemaVersion / serverVersion, diagnostics agrégés, execution avec requestedSampleLimit / effectiveSampleLimit), diagnostics typés par couche, ciblage `targets` (exclusif avec serviceKeys), inventaire découpé en modules. " +
-        "Outils d’inventaire : count_layer, inventory_all_layers, recommend_open_data_candidates. " +
-        "Rapports : generate_inventory_report, generate_open_data_brief, generate_chatbot_readiness_report, generate_internal_dashboard_brief, generate_layer_action_plan. " +
-        "Toujours vérifier le mode avant d’exposer des données citoyennes.",
-    },
-  );
+/**
+ * Verrou commun appliqué côté outil : refuse explicitement `mode=internal` si
+ * `publicOnly` est actif. On n'écrase pas silencieusement la valeur — un client
+ * qui réclame `internal` doit être notifié de la limite (sécurité par
+ * intention plutôt que par tolérance).
+ */
+function resolveEffectiveMode(
+  requested: "public" | "internal" | undefined,
+  cfg: AppConfig,
+  options: Required<AnnecySigMcpRuntimeOptions>,
+): "public" | "internal" {
+  const baseDefault = options.publicOnly ? "public" : (options.defaultMode ?? cfg.defaultMode);
+  const effective = requested ?? baseDefault;
+  if (options.publicOnly && effective === "internal") {
+    throw new AppError("FORBIDDEN", REMOTE_INTERNAL_REFUSAL_MESSAGE, {
+      hint: "Réessayer en mode=public ou utiliser le serveur stdio local.",
+    });
+  }
+  return effective;
+}
+
+/**
+ * Déclare les outils MCP sur un serveur fourni, en tenant compte des
+ * contraintes du transport (stdio = tout autorisé ; HTTP public = filtres).
+ *
+ * Centraliser ce code évite la duplication entre `index.ts` (stdio) et le
+ * handler HTTP. Toute évolution d'outil doit passer ici.
+ */
+export function registerAnnecySigTools(
+  server: McpServer,
+  cfg: AppConfig,
+  runtimeOptions?: AnnecySigMcpRuntimeOptions,
+): void {
+  const options: Required<AnnecySigMcpRuntimeOptions> = {
+    ...DEFAULT_RUNTIME_OPTIONS,
+    ...runtimeOptions,
+  };
+  // Si publicOnly est forcé, on aligne le mode par défaut sur public quoi
+  // qu'il arrive — pas de fenêtre d'élévation.
+  if (options.publicOnly) options.defaultMode = "public";
 
   server.registerTool(
     "list_services",
@@ -73,7 +143,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         return jsonOk(runListServices(mode));
       } catch (e) {
         return jsonErr(e);
@@ -92,7 +162,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         return jsonOk(runListLayers(args.serviceKey, mode));
       } catch (e) {
         return jsonErr(e);
@@ -119,7 +189,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         return jsonOk(
           await runDescribeLayer(cfg, args.serviceKey, args.layerId, mode, {
             includeRawMetadata: args.includeRawMetadata,
@@ -149,7 +219,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         return jsonOk(
           await runQueryLayer(cfg, {
             serviceKey: args.serviceKey,
@@ -186,7 +256,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         const { lat, lon } = parseLatLon(args.lat, args.lon);
         const radiusMeters = parseRadiusMeters(args.radiusMeters, 500, cfg.maxSearchRadiusMeters);
         validateServiceLayer(args.serviceKey, args.layerId, mode);
@@ -208,53 +278,59 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
   );
 
-  server.registerTool(
-    "list_current_works",
-    {
-      description: "Liste les travaux actifs à une date (couche travaux, mode internal requis côté données).",
-      inputSchema: {
-        date: z.string().optional(),
-        includeGeometry: z.boolean().optional(),
-        limit: z.number().int().optional(),
+  // ---------------------------------------------------------------------------
+  // Outils internal-only — non enregistrés en transport public.
+  // ---------------------------------------------------------------------------
+  if (options.allowInternalTools) {
+    server.registerTool(
+      "list_current_works",
+      {
+        description:
+          "Liste les travaux actifs à une date (couche travaux, mode internal requis côté données).",
+        inputSchema: {
+          date: z.string().optional(),
+          includeGeometry: z.boolean().optional(),
+          limit: z.number().int().optional(),
+        },
       },
-    },
-    async args => {
-      try {
-        return jsonOk(
-          await runListCurrentWorks(cfg, {
-            date: args.date,
-            includeGeometry: args.includeGeometry,
-            limit: args.limit,
-          }),
-        );
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
-  );
+      async args => {
+        try {
+          return jsonOk(
+            await runListCurrentWorks(cfg, {
+              date: args.date,
+              includeGeometry: args.includeGeometry,
+              limit: args.limit,
+            }),
+          );
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    );
 
-  server.registerTool(
-    "list_late_works",
-    {
-      description: "Liste les travaux avec statut « En cours hors délai » (mode internal).",
-      inputSchema: {
-        limit: z.number().int().optional(),
-        includeGeometry: z.boolean().optional(),
+    server.registerTool(
+      "list_late_works",
+      {
+        description: "Liste les travaux avec statut « En cours hors délai » (mode internal).",
+        inputSchema: {
+          limit: z.number().int().optional(),
+          includeGeometry: z.boolean().optional(),
+        },
       },
-    },
-    async args => {
-      try {
-        return jsonOk(
-          await runListLateWorks(cfg, {
-            limit: args.limit,
-            includeGeometry: args.includeGeometry,
-          }),
-        );
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
-  );
+      async args => {
+        try {
+          return jsonOk(
+            await runListLateWorks(cfg, {
+              limit: args.limit,
+              includeGeometry: args.includeGeometry,
+            }),
+          );
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    );
+  }
 
   server.registerTool(
     "count_layer",
@@ -270,7 +346,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         return jsonOk(
           await runCountLayer(cfg, {
             serviceKey: args.serviceKey,
@@ -317,7 +393,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         return jsonOk(
           await runInventoryAllLayers(cfg, {
             mode,
@@ -358,7 +434,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         return jsonOk(
           await runRecommendOpenDataCandidates(cfg, {
             mode,
@@ -404,7 +480,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         const format = args.format === "json" ? "json" : "markdown";
         const r = await runGenerateInventoryReport(cfg, {
           mode,
@@ -450,7 +526,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         const format = args.format === "json" ? "json" : "markdown";
         const r = await runGenerateOpenDataBrief(cfg, {
           mode,
@@ -497,7 +573,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         const format = args.format === "json" ? "json" : "markdown";
         const r = await runGenerateChatbotReadinessReport(cfg, {
           mode,
@@ -515,33 +591,35 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
   );
 
-  server.registerTool(
-    "generate_internal_dashboard_brief",
-    {
-      description:
-        "Brief dashboard interne (travaux) : actifs, retards, alertes qualité — **internal uniquement**, sans pièces jointes.",
-      inputSchema: {
-        mode: z.literal("internal"),
-        date: z.string().optional(),
-        format: formatSchema,
-        writeOutput: writeOutputSchema,
+  if (options.allowInternalTools) {
+    server.registerTool(
+      "generate_internal_dashboard_brief",
+      {
+        description:
+          "Brief dashboard interne (travaux) : actifs, retards, alertes qualité — **internal uniquement**, sans pièces jointes.",
+        inputSchema: {
+          mode: z.literal("internal"),
+          date: z.string().optional(),
+          format: formatSchema,
+          writeOutput: writeOutputSchema,
+        },
       },
-    },
-    async args => {
-      try {
-        const format = args.format === "json" ? "json" : "markdown";
-        const r = await runGenerateInternalDashboardBrief(cfg, {
-          mode: args.mode,
-          date: args.date,
-          format,
-          writeOutput: args.writeOutput,
-        });
-        return jsonOk({ format: r.format, body: r.body, structured: r.structured, output: r.output });
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
-  );
+      async args => {
+        try {
+          const format = args.format === "json" ? "json" : "markdown";
+          const r = await runGenerateInternalDashboardBrief(cfg, {
+            mode: args.mode,
+            date: args.date,
+            format,
+            writeOutput: args.writeOutput,
+          });
+          return jsonOk({ format: r.format, body: r.body, structured: r.structured, output: r.output });
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    );
+  }
 
   server.registerTool(
     "generate_layer_action_plan",
@@ -561,7 +639,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         const format = args.format === "json" ? "json" : "markdown";
         const r = await runGenerateLayerActionPlan(cfg, {
           serviceKey: args.serviceKey,
@@ -593,7 +671,7 @@ export function createMcpServer(cfg: AppConfig): McpServer {
     },
     async args => {
       try {
-        const mode = args.mode ?? cfg.defaultMode;
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
         return jsonOk(
           await runDetectDataQualityIssues(cfg, {
             serviceKey: args.serviceKey,
@@ -607,6 +685,39 @@ export function createMcpServer(cfg: AppConfig): McpServer {
       }
     },
   );
+}
 
+/**
+ * Construit un `McpServer` complet (instance + outils enregistrés).
+ *
+ * - Sans options : conserve le comportement historique du bootstrap stdio
+ *   local (tous les outils, mode défaut depuis la config).
+ * - Avec `runtimeOptions`, sert également le bootstrap HTTP distant via
+ *   `src/runtime/httpHandler.ts`.
+ */
+export function createAnnecySigMcpServer(
+  cfg: AppConfig,
+  runtimeOptions?: AnnecySigMcpRuntimeOptions,
+): McpServer {
+  const server = new McpServer(
+    { name: "annecy-sig-mcp", version: SERVER_VERSION },
+    {
+      instructions:
+        "Serveur MCP lecture seule sur l’allowlist SIG Annecy (portailsig.annecy.fr). " +
+        "Modes public (champs réduits) et internal (champs étendus, jamais de secrets). " +
+        "V0.7 : schéma `source` stable (schemaVersion / serverVersion, diagnostics agrégés, execution avec requestedSampleLimit / effectiveSampleLimit), diagnostics typés par couche, ciblage `targets` (exclusif avec serviceKeys), inventaire découpé en modules. " +
+        "Outils d’inventaire : count_layer, inventory_all_layers, recommend_open_data_candidates. " +
+        "Rapports : generate_inventory_report, generate_open_data_brief, generate_chatbot_readiness_report, generate_internal_dashboard_brief, generate_layer_action_plan. " +
+        "Toujours vérifier le mode avant d’exposer des données citoyennes.",
+    },
+  );
+  registerAnnecySigTools(server, cfg, runtimeOptions);
   return server;
 }
+
+/** Compat ascendante — utilisé par `src/index.ts` (stdio) et plusieurs tests. */
+export function createMcpServer(cfg: AppConfig): McpServer {
+  return createAnnecySigMcpServer(cfg);
+}
+
+export const REMOTE_INTERNAL_REFUSAL = REMOTE_INTERNAL_REFUSAL_MESSAGE;

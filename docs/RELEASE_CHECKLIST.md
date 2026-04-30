@@ -21,6 +21,15 @@ chaque case avant le tag Git.
 
 - `npx tsx scripts/smoke-mcp.ts` — démarre `dist/index.js`, vérifie la
 liste des outils MCP attendus et l’absence de logs parasites sur stdout.
+- `npm run typecheck:api` — vérifie que les handlers Vercel (`api/*.ts`)
+typent proprement (sans émettre de JS).
+- `npm run smoke:http` — boot un mini-serveur Node local, vérifie :
+   - `/api/health` répond `200` sans appel ArcGIS ;
+   - périmètre public attendu (13 outils) sur `/api/mcp`, sans fuite des
+     outils internal (`generate_internal_dashboard_brief`,
+     `list_current_works`, `list_late_works`) ;
+   - refus explicite de `mode=internal` sur un outil ;
+   - auth Bearer : `401` sans token, succès avec le bon token.
 - (manuel) Brancher le serveur dans Cursor avec
 `examples/cursor-mcp-config.json`, puis exécuter le prompt 1 de
 `docs/RECETTE_TERRAIN.md` (`list_services` public).
@@ -41,6 +50,21 @@ clés dans les payloads (les occurrences en CHANGELOG sont OK).
 - `package.json` `version` aligné avec la cible.
 - `CHANGELOG.md` à jour pour la version cible.
 - CI verte sur la branche (`.github/workflows/ci.yml`).
+
+## 5.bis Déploiement HTTP distant Vercel
+
+À cocher uniquement quand on touche au transport HTTP (`api/`,
+`src/runtime/httpHandler.ts`, `src/runtime/httpAuth.ts`, `vercel.json`) :
+
+- `https://mcp.leadalpes.fr/api/health` → `{ "status": "ok", "publicOnly": true,
+  "internalToolsAllowed": false, "bearerRequired": true }`.
+- Brancher Cursor avec `examples/cursor-mcp-remote-config.json` et appeler
+  `list_services` mode public → succès.
+- Tenter un outil avec `mode=internal` → refus explicite avec le message
+  *« HTTP public n'autorise pas le mode internal »*.
+- `tools/list` ne contient PAS : `generate_internal_dashboard_brief`,
+  `list_current_works`, `list_late_works`.
+- `MCP_PUBLIC_READ_TOKEN` défini sur l'environnement Production de Vercel.
 
 ## 6. Tag Git
 

@@ -44,6 +44,9 @@ jobs:
       - name: TypeScript build
         run: npm run build
 
+      - name: Typecheck Vercel API handlers (api/)
+        run: npm run typecheck:api
+
       - name: Vitest (tests offline uniquement)
         run: npx vitest run
 
@@ -57,3 +60,9 @@ jobs:
         # Démarre le serveur compilé, vérifie la liste des outils MCP attendus
         # et l'absence de bruit hors protocole sur stdout.
         run: npm run smoke:mcp
+
+      - name: Smoke test HTTP (handler local, hors réseau)
+        # Boot un mini-serveur Node local qui appelle handleHttpMcpRequest /
+        # handleHttpHealthRequest et vérifie : auth Bearer, refus mode=internal,
+        # périmètre public attendu, exclusion des outils internal-only.
+        run: npm run smoke:http

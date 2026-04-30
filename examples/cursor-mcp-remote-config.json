@@ -1,0 +1,26 @@
+{
+  "_README": [
+    "Configuration Cursor pour le MCP Annecy SIG **distant** (Vercel).",
+    "Coller ce bloc dans la configuration MCP de Cursor (Settings -> MCP).",
+    "Remplacer <MCP_PUBLIC_READ_TOKEN> par le token configuré côté Vercel.",
+    "",
+    "Sécurité :",
+    "- Le serveur HTTP distant est PUBLIC-ONLY : mode=internal refusé.",
+    "- Pour les outils internal (travaux, dashboard), utiliser le MCP local stdio",
+    "  via examples/cursor-mcp-config.json.",
+    "- Ne jamais committer un vrai token dans ce fichier.",
+    "- Si MCP_PUBLIC_READ_TOKEN n'est pas défini côté serveur, supprimer le bloc",
+    "  `headers` (auth désactivée).",
+    "",
+    "URL cible recommandée : https://mcp.leadalpes.fr/api/mcp",
+    "URL de fallback (sous-domaine Vercel) : https://<projet>.vercel.app/api/mcp"
+  ],
+  "mcpServers": {
+    "annecy-sig-remote": {
+      "url": "https://mcp.leadalpes.fr/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <MCP_PUBLIC_READ_TOKEN>"
+      }
+    }
+  }
+}

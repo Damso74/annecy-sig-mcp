@@ -14,6 +14,22 @@ function readEnvMode(key: string, fallback: "public" | "internal"): "public" | "
   return fallback;
 }
 
+function readEnvBool(key: string, fallback: boolean): boolean {
+  const raw = process.env[key];
+  if (raw === undefined || raw === "") return fallback;
+  const v = raw.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(v)) return true;
+  if (["0", "false", "no", "off"].includes(v)) return false;
+  return fallback;
+}
+
+function readEnvOptionalString(key: string): string | undefined {
+  const v = process.env[key];
+  if (v === undefined) return undefined;
+  const trimmed = v.trim();
+  return trimmed === "" ? undefined : trimmed;
+}
+
 export interface AppConfig {
   annecySigBaseUrl: string;
   defaultResultLimit: number;
@@ -26,6 +42,31 @@ export interface AppConfig {
   allowedHost: string;
   /** Plafond rayon `search_nearby` (mètres), configurable via MAX_SEARCH_RADIUS_METERS. */
   maxSearchRadiusMeters: number;
+  /**
+   * Paramètres dédiés au transport HTTP distant (`api/mcp`). Ils n'ont **aucun
+   * effet** sur le bootstrap stdio local — ils sont lus par le handler HTTP
+   * pour décider du verrouillage public-only et de l'exposition (ou non) des
+   * outils internal.
+   */
+  remote: {
+    /** Force `mode = "public"` côté serveur, refus explicite de `internal`. */
+    publicOnly: boolean;
+    /**
+     * Autorise l'enregistrement des outils internal-only (travaux, dashboard
+     * interne) sur le transport HTTP. Faux par défaut — à n'activer que
+     * derrière une passerelle restricted authentifiée.
+     */
+    allowInternalTools: boolean;
+    /**
+     * Token Bearer optionnel exigé sur `/api/mcp`.
+     * - Indéfini (`MCP_PUBLIC_READ_TOKEN` non défini) : auth désactivée
+     *   (utile en local/test, à éviter en prod Vercel).
+     * - Défini : `Authorization: Bearer <token>` requis (sinon `401`).
+     *
+     * Source unique de vérité côté serveur — jamais journalisé.
+     */
+    publicReadToken?: string;
+  };
 }
 
 function normalizeBaseUrl(url: string): string {
@@ -60,5 +101,13 @@ export function loadConfig(): AppConfig {
     reportOutputDir: process.env.REPORT_OUTPUT_DIR ?? "outputs",
     allowedHost,
     maxSearchRadiusMeters: Math.max(100, maxSearchRadiusMeters),
+    remote: {
+      // Le HTTP distant doit être public-only par défaut. On accepte de
+      // désactiver le verrou via `REMOTE_PUBLIC_ONLY=false` mais c'est très
+      // explicite côté Ops.
+      publicOnly: readEnvBool("REMOTE_PUBLIC_ONLY", true),
+      allowInternalTools: readEnvBool("REMOTE_ALLOW_INTERNAL_TOOLS", false),
+      publicReadToken: readEnvOptionalString("MCP_PUBLIC_READ_TOKEN"),
+    },
   };
 }

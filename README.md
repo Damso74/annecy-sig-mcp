@@ -134,9 +134,100 @@ Détails de chaque outil et de leurs structured outputs :
 npx vitest run                    # 100 % offline, fixtures sous tests/fixtures/arcgis/
 RUN_NETWORK_TESTS=true npm test   # active les tests qui touchent le portail réel
 npm run smoke:mcp                 # démarre dist/index.js, vérifie tools + stdout silencieux
+npm run smoke:http                # smoke local du handler HTTP (auth, refus internal, périmètre)
+npm run typecheck:api             # typecheck du dossier api/ (handlers Vercel)
 ```
 
 Sur Windows (PowerShell) : `$env:RUN_NETWORK_TESTS="true"; npm test`.
+
+## 9. Déploiement distant Vercel (transport HTTP)
+
+En complément du MCP local stdio, le serveur peut être déployé sur Vercel
+pour être consommé en remote depuis Cursor / Copilot / autre client MCP via
+une URL HTTPS. Le transport HTTP est **public-only par défaut** et ne donne
+jamais accès aux outils internal.
+
+### 9.1 URL cible
+
+URL recommandée (à configurer dans Vercel → Domains) :
+
+```
+https://mcp.leadalpes.fr/api/mcp
+```
+
+URL de fallback (sous-domaine Vercel) :
+
+```
+https://<projet>.vercel.app/api/mcp
+```
+
+Endpoint de diagnostic (sans appel ArcGIS) :
+
+```
+https://mcp.leadalpes.fr/api/health
+```
+
+### 9.2 Variables d'environnement Vercel
+
+À renseigner dans **Project → Settings → Environment Variables** :
+
+| Variable                       | Valeur recommandée                                           | Remarque                                  |
+| ------------------------------ | ------------------------------------------------------------ | ----------------------------------------- |
+| `ANNECY_SIG_BASE_URL`          | `https://portailsig.annecy.fr/server/rest/services`          | Allowlist d'hôte                          |
+| `DEFAULT_MODE`                 | `public`                                                     | Mode par défaut                           |
+| `CONTRACT_POLICY`              | `warn`                                                       | `strict` casserait les rapports en prod   |
+| `REMOTE_PUBLIC_ONLY`           | `true`                                                       | **Ne jamais désactiver** sur l'URL publique |
+| `REMOTE_ALLOW_INTERNAL_TOOLS`  | `false`                                                      | Garde les outils travaux invisibles       |
+| `MCP_PUBLIC_READ_TOKEN`        | (générer un secret aléatoire, ex. `openssl rand -hex 32`)    | Sans valeur → auth désactivée             |
+| `MAX_RESULT_LIMIT`             | `1000`                                                       | Plafond résultats                         |
+| `MAX_SEARCH_RADIUS_METERS`     | `5000`                                                       | Plafond rayon search_nearby               |
+| `ARCGIS_TIMEOUT_MS`            | `10000`                                                      | Timeout ArcGIS                            |
+| `ARCGIS_CACHE_TTL_MS`          | `300000`                                                     | Cache GET en mémoire (5 min)              |
+
+Aucun token portail SIG n'est requis (lecture seule).
+
+### 9.3 Configuration Cursor remote
+
+Voir le modèle prêt à coller : `[examples/cursor-mcp-remote-config.json](examples/cursor-mcp-remote-config.json)`.
+
+```json
+{
+  "mcpServers": {
+    "annecy-sig-remote": {
+      "url": "https://mcp.leadalpes.fr/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <MCP_PUBLIC_READ_TOKEN>"
+      }
+    }
+  }
+}
+```
+
+Si `MCP_PUBLIC_READ_TOKEN` n'est pas défini côté serveur, supprimer le bloc
+`headers`.
+
+### 9.4 Étapes de déploiement
+
+1. Créer un projet Vercel et le lier à ce dépôt
+   (`vercel link`, ou via le dashboard Vercel).
+2. Renseigner les variables d'environnement (§9.2).
+3. Déployer (`vercel --prod` ou via la CI Vercel).
+4. **Domaine custom** `mcp.leadalpes.fr` :
+   - Vercel → Project → Settings → Domains → *Add Domain* `mcp.leadalpes.fr`.
+   - Suivre l'instruction Vercel (CNAME `cname.vercel-dns.com` ou ALIAS).
+   - Ajouter l'enregistrement DNS chez votre registrar / fournisseur DNS
+     (cette étape sort du scope du repo).
+5. Vérifier `https://mcp.leadalpes.fr/api/health` → `{ "status": "ok" }`.
+6. Brancher Cursor avec `examples/cursor-mcp-remote-config.json`.
+
+### 9.5 Avertissement
+
+- Le transport HTTP distant est **public-only**. Tout appel d'outil avec
+  `mode=internal` est explicitement refusé avec un message clair invitant à
+  utiliser le MCP local stdio.
+- Les outils internal-only (`generate_internal_dashboard_brief`,
+  `list_current_works`, `list_late_works`) **ne sont pas exposés** par défaut.
+- Pour ces outils, garder le bootstrap stdio local (`examples/cursor-mcp-config.json`).
 
 ## Licence
 
