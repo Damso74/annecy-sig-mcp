@@ -14,7 +14,9 @@ chacun, la check-list de ce qu’il faut vérifier dans la réponse.
 À vérifier :
 
 - La liste contient `equipements` et `mobilite`.
-- Elle **ne contient pas** `travaux` (couche `internal`).
+- Le service `travaux` peut apparaître en mode public, **mais avec
+  `layersCount: 0`** : aucune couche travaux n’est interrogeable en mode
+  public (verrou registry / allowlist).
 - Aucun champ sensible visible (`url_pj`, `created_user`, `token`, …).
 - Réponse Cursor en moins de 5 s.
 
@@ -41,9 +43,10 @@ chacun, la check-list de ce qu’il faut vérifier dans la réponse.
 - `perLayer[].safeAnswerRules` non vide pour les couches citoyennes.
 - Aucun marqueur sensible (`created_user`, `url_pj`, `token`, …) dans le
   payload.
-- Le rapport classe correctement les couches entre `ready`, `usableNow`,
-  `usableWithCaution`, `notReady` ou `unknownRequiresCheck`. Un `ready` à 0
-  est acceptable si les raisons sont explicites.
+- Le rapport classe correctement chaque couche entre `ready`, `usableNow`,
+  `usableWithCaution`, `notReady` et `unknownRequiresCheck`, avec raisons
+  explicites. **`ready=0` est acceptable** si la classification couvre
+  l’ensemble des couches du périmètre et si les raisons sont fournies.
 
 ## Prompt 4 — `generate_open_data_brief` public
 
@@ -53,10 +56,12 @@ chacun, la check-list de ce qu’il faut vérifier dans la réponse.
 
 - Aucune couche `travaux` en VERT (verrou juridique du registre).
 - Dans la réponse structurée, `source.schemaVersion === "open_data.v1"`.
-- Dans le Markdown, vérifier l’absence de marqueurs sensibles
-  (`url_pj`, `created_user`, `attachment`, …) et la présence des
-  recommandations.
-- `recommendedNextActions` non vide.
+- Dans le Markdown, absence de marqueurs sensibles (`url_pj`,
+  `created_user`, `attachment`, …).
+- Présence de recommandations actionnables dans **au moins une** des sections
+  suivantes du payload structuré : `quickWins`, `plan30Days`,
+  `validationsNeeded`, ou `operationalSynthesis` (`quickWins7Days`,
+  `plan30Days`, `arbitragesNecessaires`, `questionsSigMetier`).
 
 ## Prompt 5 — `inventory_all_layers` ciblé
 

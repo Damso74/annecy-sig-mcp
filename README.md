@@ -8,7 +8,7 @@ d’Annecy (`portailsig.annecy.fr`) depuis Cursor.
 - Modes `public` (champs réduits) / `internal` (champs étendus, jamais de
 secrets).
 - Réponses JSON normalisées (jamais le JSON ArcGIS brut).
-- Contrats Zod stables pour tous les rapports `generate_`* (V1.0).
+- Contrats Zod stables pour tous les rapports `generate_`* (`schemaVersion` `*.v1`).
 - Tests offline avec fixtures HTTP — `npx vitest run` ne fait aucun appel
 réseau par défaut.
 

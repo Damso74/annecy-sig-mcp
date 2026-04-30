@@ -15,7 +15,7 @@ recette. Conserver le fichier rempli avec le tag (ex.
 | Champ                              | Valeur                                                          |
 | ---------------------------------- | --------------------------------------------------------------- |
 | Prompt                             | « Appelle `list_services` en mode public et résume… »           |
-| Résultat attendu                   | Services `equipements` + `mobilite`, `travaux` invisible        |
+| Résultat attendu                   | Services `equipements` + `mobilite` ; `travaux` peut apparaître mais avec `layersCount: 0` |
 | OK / KO                            |                                                                 |
 | Temps de réponse                   |                                                                 |
 | Commentaire                        |                                                                 |
