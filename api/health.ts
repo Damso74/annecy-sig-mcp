@@ -6,7 +6,8 @@
  * possible (Better Stack, UptimeRobot, etc.).
  */
 
-import { handleHttpHealthRequest } from "../src/runtime/httpHandler.js";
+// Import depuis `../dist/...` après build — voir api/mcp.ts pour la rationale.
+import { handleHttpHealthRequest } from "../dist/runtime/httpHandler.js";
 
 export const config = {
   runtime: "nodejs",

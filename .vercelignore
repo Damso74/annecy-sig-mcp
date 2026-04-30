@@ -1,0 +1,17 @@
+# Fichiers volontairement exclus du package serverless Vercel.
+# `npm run build` (déclenché par vercel.json) produit dist/ avant le packaging
+# des fonctions, donc dist/ n'a pas besoin d'être ignoré ici.
+
+tests/
+scripts/
+docs/
+examples/
+outputs/
+.github/
+.cursor/
+*.md
+schemas/
+CHANGELOG.md
+.env
+.env.*
+!.env.example
