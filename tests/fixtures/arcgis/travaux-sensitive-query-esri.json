@@ -1,0 +1,38 @@
+{
+  "objectIdFieldName": "OBJECTID",
+  "geometryType": "esriGeometryPolygon",
+  "spatialReference": { "wkid": 4326 },
+  "fields": [
+    { "name": "OBJECTID", "type": "esriFieldTypeOID" },
+    { "name": "titre", "type": "esriFieldTypeString" },
+    { "name": "ac_num", "type": "esriFieldTypeString" }
+  ],
+  "features": [
+    {
+      "attributes": {
+        "OBJECTID": 911,
+        "ac_odp_ref": "REF-2026-S01",
+        "ac_num": "ARR-2026-S01",
+        "ac_date_debut": 1764547200000,
+        "ac_date_fin": 1767139200000,
+        "controle_resultat": "En cours",
+        "titre": "Travaux sensibles fictifs",
+        "adresse": "Quai Jules Philippe",
+        "commune_deleguee": "Annecy",
+        "description": "Fixture test V0.9 — exposition volontaire de champs d'audit.",
+        "url_pj": "https://example/files/secret-arrete.pdf",
+        "url_piece_jointe": "https://example/files/annexe.pdf",
+        "created_user": "AGENT_INTERNE",
+        "created_date": 1764000000000,
+        "last_edited_user": "AGENT_INTERNE",
+        "last_edited_date": 1764500000000,
+        "token": "ABCDEF",
+        "password": "do-not-leak",
+        "secret": "shhh",
+        "bearer": "Bearer xyz",
+        "attachment": "https://example/files/attached.pdf"
+      },
+      "geometry": null
+    }
+  ]
+}

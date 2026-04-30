@@ -1,0 +1,59 @@
+name: CI
+
+# CI standard de annecy-sig-mcp (V0.9).
+# - tests réseau ArcGIS désactivés par défaut (pas de RUN_NETWORK_TESTS=true).
+# - les JSON Schemas versionnés sont vérifiés via `npm run schemas:check`.
+# - aucun secret n'est requis (lecture seule, pas de token portail dans la CI publique).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build, tests offline et schemas
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Forcer la politique stricte des contrats Zod en CI : toute dérive de schéma
+      # fait échouer la suite (au lieu d'un simple warning sur stderr).
+      CONTRACT_POLICY: strict
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies (lockfile-strict)
+        run: npm ci
+
+      - name: TypeScript build
+        run: npm run build
+
+      - name: Vitest (tests offline uniquement)
+        run: npx vitest run
+
+      - name: Generate JSON Schemas
+        run: npm run schemas
+
+      - name: Verify versioned JSON Schemas are up to date
+        run: npm run schemas:check
+
+      - name: Smoke test MCP (stdio, hors réseau)
+        # Démarre le serveur compilé, vérifie la liste des outils MCP attendus
+        # et l'absence de bruit hors protocole sur stdout.
+        run: npm run smoke:mcp

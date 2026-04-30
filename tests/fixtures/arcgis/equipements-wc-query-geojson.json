@@ -1,0 +1,56 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [6.1289, 45.8992] },
+      "properties": {
+        "OBJECTID": 101,
+        "denomination": "WC Hôtel de Ville",
+        "ouvert": "Oui",
+        "adresse": "Esplanade de l'Hôtel de Ville",
+        "commune": "Annecy",
+        "pmr": "Oui",
+        "horaire": "08:00-19:00",
+        "telephone": null,
+        "categorie": "Sanitaires",
+        "sous_categorie": "WC",
+        "accessibilite": "PMR"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [6.1331, 45.9011] },
+      "properties": {
+        "OBJECTID": 102,
+        "denomination": "WC Pâquier",
+        "ouvert": "Oui",
+        "adresse": "Champ de Mars",
+        "commune": "Annecy",
+        "pmr": "Non",
+        "horaire": "09:00-18:00",
+        "telephone": null,
+        "categorie": "Sanitaires",
+        "sous_categorie": "WC",
+        "accessibilite": "Standard"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [6.1402, 45.9035] },
+      "properties": {
+        "OBJECTID": 103,
+        "denomination": "WC Plage Albigny",
+        "ouvert": "Saisonnier",
+        "adresse": "Avenue d'Albigny",
+        "commune": "Annecy",
+        "pmr": "Oui",
+        "horaire": "10:00-20:00",
+        "telephone": null,
+        "categorie": "Sanitaires",
+        "sous_categorie": "WC",
+        "accessibilite": "PMR"
+      }
+    }
+  ]
+}

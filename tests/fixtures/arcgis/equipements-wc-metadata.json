@@ -1,0 +1,32 @@
+{
+  "id": 5,
+  "name": "WC publics",
+  "type": "Feature Layer",
+  "geometryType": "esriGeometryPoint",
+  "capabilities": "Map,Query,Data",
+  "maxRecordCount": 1000,
+  "objectIdField": "OBJECTID",
+  "globalIdField": "GLOBALID",
+  "description": "Toilettes publiques de la Ville d'Annecy.",
+  "fields": [
+    { "name": "OBJECTID", "type": "esriFieldTypeOID", "alias": "OBJECTID", "nullable": false },
+    { "name": "denomination", "type": "esriFieldTypeString", "alias": "Dénomination", "nullable": true },
+    { "name": "ouvert", "type": "esriFieldTypeString", "alias": "Ouvert", "nullable": true },
+    { "name": "adresse", "type": "esriFieldTypeString", "alias": "Adresse", "nullable": true },
+    { "name": "commune", "type": "esriFieldTypeString", "alias": "Commune", "nullable": true },
+    { "name": "pmr", "type": "esriFieldTypeString", "alias": "PMR", "nullable": true },
+    { "name": "horaire", "type": "esriFieldTypeString", "alias": "Horaires", "nullable": true },
+    { "name": "telephone", "type": "esriFieldTypeString", "alias": "Téléphone", "nullable": true },
+    { "name": "categorie", "type": "esriFieldTypeString", "alias": "Catégorie", "nullable": true },
+    { "name": "sous_categorie", "type": "esriFieldTypeString", "alias": "Sous-catégorie", "nullable": true },
+    { "name": "accessibilite", "type": "esriFieldTypeString", "alias": "Accessibilité", "nullable": true },
+    { "name": "GLOBALID", "type": "esriFieldTypeGlobalID", "alias": "GLOBALID", "nullable": false }
+  ],
+  "extent": {
+    "xmin": 6.10,
+    "ymin": 45.88,
+    "xmax": 6.18,
+    "ymax": 45.94,
+    "spatialReference": { "wkid": 4326 }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "objectIdFieldName": "OBJECTID",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326 },
+  "fields": [
+    { "name": "OBJECTID", "type": "esriFieldTypeOID" },
+    { "name": "denomination", "type": "esriFieldTypeString" },
+    { "name": "adresse", "type": "esriFieldTypeString" }
+  ],
+  "features": [
+    {
+      "attributes": {
+        "OBJECTID": 201,
+        "denomination": "WC Bonlieu",
+        "adresse": "1 Rue Jean Jaurès",
+        "commune": "Annecy",
+        "ouvert": "Oui",
+        "pmr": "Oui",
+        "horaire": "08:00-20:00",
+        "categorie": "Sanitaires",
+        "sous_categorie": "WC",
+        "accessibilite": "PMR"
+      },
+      "geometry": { "x": 6.1278, "y": 45.8975 }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 202,
+        "denomination": "WC Marquisats",
+        "adresse": "Rue des Marquisats",
+        "commune": "Annecy",
+        "ouvert": "Oui",
+        "pmr": "Non",
+        "horaire": null,
+        "categorie": "Sanitaires",
+        "sous_categorie": "WC",
+        "accessibilite": "Standard"
+      },
+      "geometry": { "x": 6.1395, "y": 45.8910 }
+    }
+  ]
+}

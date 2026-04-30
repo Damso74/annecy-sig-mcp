@@ -1,0 +1,29 @@
+name: Network tests (manual)
+
+# Workflow optionnel — déclenché à la main pour exécuter les tests qui touchent
+# réellement le portail ArcGIS Annecy. Non activé en CI standard ni sur PR.
+# La cible reste lecture seule (GET, allowlist, pas de POST), aucun secret requis.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  network:
+    name: Tests réseau ArcGIS (RUN_NETWORK_TESTS=true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RUN_NETWORK_TESTS: 'true'
+      CONTRACT_POLICY: strict
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - run: npm test

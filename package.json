@@ -1,0 +1,38 @@
+{
+  "name": "annecy-sig-mcp",
+  "version": "1.0.0-rc.1",
+  "description": "Serveur MCP lecture seule pour couches ArcGIS REST Ville d'Annecy (allowlist)",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "schemas": "tsx src/contracts/exportJsonSchemas.ts",
+    "schemas:check": "tsx src/contracts/checkJsonSchemas.ts",
+    "smoke:mcp": "tsx scripts/smoke-mcp.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "mcp",
+    "arcgis",
+    "annecy",
+    "sig"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5",
+    "zod-to-json-schema": "^3.25.2"
+  }
+}

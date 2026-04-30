@@ -1,0 +1,25 @@
+{
+  "id": 0,
+  "name": "Administration",
+  "type": "Feature Layer",
+  "geometryType": "esriGeometryPoint",
+  "capabilities": "Map,Query,Data",
+  "maxRecordCount": 1000,
+  "objectIdField": "OBJECTID",
+  "globalIdField": "GLOBALID",
+  "description": "Services administratifs.",
+  "fields": [
+    { "name": "OBJECTID", "type": "esriFieldTypeOID" },
+    { "name": "denomination", "type": "esriFieldTypeString" },
+    { "name": "ouvert", "type": "esriFieldTypeString" },
+    { "name": "adresse", "type": "esriFieldTypeString" },
+    { "name": "commune", "type": "esriFieldTypeString" },
+    { "name": "pmr", "type": "esriFieldTypeString" },
+    { "name": "horaire", "type": "esriFieldTypeString" },
+    { "name": "telephone", "type": "esriFieldTypeString" },
+    { "name": "categorie", "type": "esriFieldTypeString" },
+    { "name": "sous_categorie", "type": "esriFieldTypeString" },
+    { "name": "accessibilite", "type": "esriFieldTypeString" },
+    { "name": "GLOBALID", "type": "esriFieldTypeGlobalID" }
+  ]
+}

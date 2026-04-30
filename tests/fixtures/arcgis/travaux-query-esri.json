@@ -1,0 +1,54 @@
+{
+  "objectIdFieldName": "OBJECTID",
+  "geometryType": "esriGeometryPolygon",
+  "spatialReference": { "wkid": 4326 },
+  "fields": [
+    { "name": "OBJECTID", "type": "esriFieldTypeOID" },
+    { "name": "titre", "type": "esriFieldTypeString" },
+    { "name": "ac_num", "type": "esriFieldTypeString" }
+  ],
+  "features": [
+    {
+      "attributes": {
+        "OBJECTID": 901,
+        "ac_odp_ref": "REF-2026-001",
+        "ac_num": "ARR-2026-001",
+        "ac_date_debut": 1764547200000,
+        "ac_date_fin": 1767139200000,
+        "controle_resultat": "En cours",
+        "titre": "Réfection trottoir Albigny",
+        "adresse": "Avenue d'Albigny",
+        "commune_deleguee": "Annecy",
+        "description": "Renouvellement enrobé 200 m.",
+        "url_pj": "https://example/files/arr-2026-001.pdf"
+      },
+      "geometry": {
+        "rings": [
+          [
+            [6.139, 45.903],
+            [6.141, 45.903],
+            [6.141, 45.904],
+            [6.139, 45.904],
+            [6.139, 45.903]
+          ]
+        ]
+      }
+    },
+    {
+      "attributes": {
+        "OBJECTID": 902,
+        "ac_odp_ref": "REF-2026-002",
+        "ac_num": "ARR-2026-002",
+        "ac_date_debut": 1764892800000,
+        "ac_date_fin": 1768435200000,
+        "controle_resultat": "En cours hors délai",
+        "titre": "Réseau eau Marquisats",
+        "adresse": null,
+        "commune_deleguee": "Annecy",
+        "description": "Reprise réseau.",
+        "url_pj": null
+      },
+      "geometry": null
+    }
+  ]
+}

@@ -1,0 +1,465 @@
+{
+  "$ref": "#/definitions/OpenDataBrief",
+  "definitions": {
+    "ServiceKey": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Clé d’un service du registre (ex. `equipements`, `mobilite`, `travaux`)."
+    },
+    "LayerId": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Identifiant numérique d’une couche ArcGIS (entier ≥ 0)."
+    },
+    "ServerVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version applicative du serveur MCP — issue de package.json (`SERVER_VERSION`)."
+    },
+    "RuntimeMs": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Durée totale du traitement côté serveur, exprimée en millisecondes."
+    },
+    "ReportFormat": {
+      "type": "string",
+      "enum": [
+        "json",
+        "markdown"
+      ],
+      "description": "Format de sortie d’un rapport (JSON structuré ou Markdown)."
+    },
+    "VisibilityMode": {
+      "type": "string",
+      "enum": [
+        "public",
+        "internal"
+      ],
+      "description": "Mode de visibilité : `public` filtre les couches internal, `internal` les inclut."
+    },
+    "SampleStatus": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "empty",
+        "failed"
+      ],
+      "description": "Statut de l’échantillon ArcGIS récupéré (succès non vide / vide / échec)."
+    },
+    "GeometryStatus": {
+      "type": "string",
+      "enum": [
+        "present",
+        "missing",
+        "unknown"
+      ],
+      "description": "Présence de la géométrie sur l’échantillon ArcGIS."
+    },
+    "RiskLevel": {
+      "type": "string",
+      "enum": [
+        "green",
+        "orange",
+        "red"
+      ],
+      "description": "Niveau de risque métier/juridique déclaré dans le registre."
+    },
+    "UsageStatus": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "usable_now",
+        "usable_with_caution",
+        "needs_field_mapping",
+        "needs_data_cleaning",
+        "to_investigate_technically",
+        "internal_only",
+        "not_usable"
+      ],
+      "description": "Statut métier d’usage agrégé sur la couche (V0.5+)."
+    },
+    "SamplingMode": {
+      "type": "string",
+      "enum": [
+        "fast",
+        "standard"
+      ],
+      "description": "Mode d’échantillonnage utilisé pour la passe d’inventaire."
+    },
+    "SampleFallbackUsed": {
+      "type": "string",
+      "enum": [
+        "registry_valid",
+        "star",
+        "objectid_only",
+        "none"
+      ],
+      "description": "Stratégie de fallback utilisée pour récupérer l’échantillon."
+    },
+    "InventoryTarget": {
+      "type": "object",
+      "properties": {
+        "serviceKey": {
+          "$ref": "#/definitions/ServiceKey"
+        },
+        "layerId": {
+          "$ref": "#/definitions/LayerId",
+          "description": "Identifiant numérique d’une couche ArcGIS (entier ≥ 0)."
+        }
+      },
+      "required": [
+        "serviceKey"
+      ],
+      "additionalProperties": false,
+      "description": "Cible d’inventaire — sans `layerId`, toutes les couches visibles du service dans le mode courant."
+    },
+    "InventoryDiagnostic": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Code court du diagnostic (ex. SAMPLE_FAILED, GEOMETRY_MISSING)."
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "description": "Sévérité du diagnostic."
+        },
+        "message": {
+          "type": "string",
+          "description": "Message lisible (sanitisé en amont)."
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Détails additionnels (libre)."
+        }
+      },
+      "required": [
+        "code",
+        "severity",
+        "message"
+      ],
+      "additionalProperties": false,
+      "description": "Diagnostic structuré rattaché à une couche d’inventaire."
+    },
+    "InventoryDiagnosticsCounts": {
+      "type": "object",
+      "properties": {
+        "failedSamples": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Nombre de couches en échec d’échantillon."
+        },
+        "emptySamples": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Nombre de couches à échantillon vide."
+        },
+        "geometryUnknownLayers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Nombre de couches dont la géométrie n’a pas pu être évaluée."
+        }
+      },
+      "required": [
+        "failedSamples",
+        "emptySamples",
+        "geometryUnknownLayers"
+      ],
+      "additionalProperties": false,
+      "description": "Agrégats compacts des diagnostics, exposés dans `source.diagnostics`."
+    },
+    "InventoryExecutionMeta": {
+      "type": "object",
+      "properties": {
+        "concurrency": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "description": "Niveau de parallélisme effectif."
+        },
+        "fast": {
+          "type": "boolean",
+          "description": "Indique si le mode rapide a été utilisé (sample = 1)."
+        },
+        "requestedSampleLimit": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Limite d’échantillon demandée."
+        },
+        "effectiveSampleLimit": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Limite d’échantillon réellement transmise à ArcGIS."
+        },
+        "serviceKeysFilter": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ServiceKey"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Liste des `serviceKeys` filtrants, ou null si non utilisé."
+        },
+        "targetsFilter": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/InventoryTarget"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Liste des cibles `targets` filtrantes, ou null si non utilisé."
+        }
+      },
+      "required": [
+        "concurrency",
+        "fast",
+        "requestedSampleLimit",
+        "effectiveSampleLimit",
+        "serviceKeysFilter",
+        "targetsFilter"
+      ],
+      "additionalProperties": false,
+      "description": "Métadonnées d’exécution de la passe d’inventaire (concurrency, fast, filtres)."
+    },
+    "InventorySourceV1": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "annecy_sig_mcp_inventory"
+        },
+        "schemaVersion": {
+          "type": "string",
+          "const": "inventory.v1",
+          "description": "Version stable du schéma `inventory.v1`."
+        },
+        "serverVersion": {
+          "$ref": "#/definitions/ServerVersion"
+        },
+        "runtimeMs": {
+          "$ref": "#/definitions/RuntimeMs"
+        },
+        "layersScanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Nombre de couches effectivement parcourues."
+        },
+        "diagnostics": {
+          "$ref": "#/definitions/InventoryDiagnosticsCounts"
+        },
+        "execution": {
+          "$ref": "#/definitions/InventoryExecutionMeta"
+        }
+      },
+      "required": [
+        "type",
+        "schemaVersion",
+        "serverVersion",
+        "runtimeMs",
+        "layersScanned",
+        "diagnostics",
+        "execution"
+      ],
+      "additionalProperties": false,
+      "description": "Bloc `source` d’un résultat d’inventaire (contrat `inventory.v1`)."
+    },
+    "OpenDataBrief": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "$ref": "#/definitions/VisibilityMode"
+        },
+        "layerAssessments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "serviceKey": {
+                "$ref": "#/definitions/ServiceKey"
+              },
+              "layerId": {
+                "$ref": "#/definitions/LayerId"
+              },
+              "layerName": {
+                "type": "string"
+              },
+              "tier": {
+                "type": "string",
+                "enum": [
+                  "green",
+                  "orange",
+                  "red"
+                ],
+                "description": "Classement open data agrégé."
+              },
+              "tierReason": {
+                "type": "string"
+              },
+              "blockingIssues": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "recommendedFixes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "publicationReadiness": {
+                "type": "string",
+                "enum": [
+                  "publishable_now",
+                  "publishable_after_light_cleanup",
+                  "requires_business_validation",
+                  "requires_legal_review",
+                  "do_not_publish"
+                ],
+                "description": "Niveau de maturité publication open data."
+              },
+              "usageStatus": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "serviceKey",
+              "layerId",
+              "layerName",
+              "tier",
+              "tierReason",
+              "blockingIssues",
+              "recommendedFixes",
+              "publicationReadiness",
+              "usageStatus"
+            ],
+            "additionalProperties": false,
+            "description": "Évaluation open data détaillée d’une couche."
+          }
+        },
+        "reasoning": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "recommendedNextActions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "annecy_sig_mcp_open_data_recommendation"
+            },
+            "schemaVersion": {
+              "type": "string",
+              "const": "open_data.v1"
+            },
+            "serverVersion": {
+              "$ref": "#/definitions/ServerVersion"
+            },
+            "inventory": {
+              "$ref": "#/definitions/InventorySourceV1"
+            },
+            "samplingMode": {
+              "$ref": "#/definitions/SamplingMode"
+            },
+            "samplingReliabilityNote": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "schemaVersion",
+            "serverVersion",
+            "inventory",
+            "samplingMode",
+            "samplingReliabilityNote"
+          ],
+          "additionalProperties": false
+        },
+        "samplingAudit": {
+          "type": "object",
+          "properties": {
+            "failedSampleLayers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "serviceKey": {
+                    "$ref": "#/definitions/ServiceKey"
+                  },
+                  "layerId": {
+                    "$ref": "#/definitions/LayerId"
+                  },
+                  "layerName": {
+                    "type": "string"
+                  },
+                  "sampleError": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "serviceKey",
+                  "layerId",
+                  "layerName"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "emptySampleLayers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/OpenDataBrief/properties/samplingAudit/properties/failedSampleLayers/items"
+              }
+            },
+            "geometryUnknownLayers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/OpenDataBrief/properties/samplingAudit/properties/failedSampleLayers/items"
+              }
+            }
+          },
+          "required": [
+            "failedSampleLayers",
+            "emptySampleLayers",
+            "geometryUnknownLayers"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "mode",
+        "layerAssessments",
+        "reasoning",
+        "recommendedNextActions",
+        "source",
+        "samplingAudit"
+      ],
+      "additionalProperties": true,
+      "description": "Brief open data — contrat `open_data.v1`."
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

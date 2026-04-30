@@ -1,0 +1,45 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [6.1265, 45.8983] },
+      "properties": {
+        "OBJECTID": 501,
+        "denomination": "Arceaux Bonlieu",
+        "nom": "ST-VELO-001",
+        "adresse": "Place Bonlieu",
+        "commune": "Annecy",
+        "categorie": "Stationnement velo",
+        "sous_categorie": "Arceaux",
+        "description": "8 arceaux extérieurs",
+        "capacite": 16,
+        "observations": null,
+        "statut": "Actif",
+        "type_stationnement": "Arceau",
+        "zone": "Centre-ville",
+        "numero": "001"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [6.1212, 45.9020] },
+      "properties": {
+        "OBJECTID": 502,
+        "denomination": "Arceaux Gare",
+        "nom": "ST-VELO-002",
+        "adresse": "Place de la Gare",
+        "commune": "Annecy",
+        "categorie": "Stationnement velo",
+        "sous_categorie": "Abri",
+        "description": "Abri sécurisé 20 places",
+        "capacite": 20,
+        "observations": "Toiture 2024",
+        "statut": "Actif",
+        "type_stationnement": "Abri",
+        "zone": "Gare",
+        "numero": "002"
+      }
+    }
+  ]
+}

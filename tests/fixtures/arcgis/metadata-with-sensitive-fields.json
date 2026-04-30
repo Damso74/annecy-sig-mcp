@@ -1,0 +1,33 @@
+{
+  "id": 99,
+  "name": "Couche test fixtures sensibles",
+  "type": "Feature Layer",
+  "geometryType": "esriGeometryPoint",
+  "capabilities": "Map,Query,Data",
+  "objectIdField": "OBJECTID",
+  "globalIdField": "GLOBALID",
+  "description": "Fixture de test : la couche expose des champs ArcGIS d'audit (audit interne, edition tracking) — le serveur MCP doit les retirer.",
+  "fields": [
+    { "name": "OBJECTID", "type": "esriFieldTypeOID" },
+    { "name": "denomination", "type": "esriFieldTypeString" },
+    { "name": "created_user", "type": "esriFieldTypeString" },
+    { "name": "created_date", "type": "esriFieldTypeDate" },
+    { "name": "last_edited_user", "type": "esriFieldTypeString" },
+    { "name": "last_edited_date", "type": "esriFieldTypeDate" },
+    { "name": "url_pj", "type": "esriFieldTypeString" },
+    { "name": "token", "type": "esriFieldTypeString" },
+    { "name": "GLOBALID", "type": "esriFieldTypeGlobalID" }
+  ],
+  "editingInfo": {
+    "lastEditDate": 1764547200000,
+    "schemaLastEditDate": 1764547200000
+  },
+  "templates": [{ "name": "internal-template", "description": "ne doit pas remonter" }],
+  "extent": {
+    "xmin": 6.10,
+    "ymin": 45.88,
+    "xmax": 6.18,
+    "ymax": 45.94,
+    "spatialReference": { "wkid": 4326 }
+  }
+}

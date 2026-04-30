@@ -1,0 +1,22 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [6.1289, 45.8992] },
+      "properties": {
+        "OBJECTID": 1,
+        "denomination": "Mairie d'Annecy",
+        "ouvert": "Oui",
+        "adresse": "Esplanade de l'Hôtel de Ville",
+        "commune": "Annecy",
+        "pmr": "Oui",
+        "horaire": "08:30-17:00",
+        "telephone": "04 50 33 88 88",
+        "categorie": "Administration",
+        "sous_categorie": "Mairie",
+        "accessibilite": "PMR"
+      }
+    }
+  ]
+}

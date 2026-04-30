@@ -1,0 +1,48 @@
+{
+  "_README": [
+    "Configuration MCP de référence pour annecy-sig-mcp dans Cursor.",
+    "Copier l'un des deux blocs (Windows ou macOS/Linux) dans le fichier de",
+    "configuration MCP de Cursor (Settings -> MCP), puis adapter le chemin",
+    "absolu vers `dist/index.js`.",
+    "",
+    "Aucun secret n'est requis : le serveur est lecture seule et n'utilise",
+    "aucun token portail.",
+    "",
+    "Variables d'environnement :",
+    "- ANNECY_SIG_BASE_URL : URL racine du portail (allowlist d'hôte).",
+    "- DEFAULT_MODE        : 'public' ou 'internal' (defaut public).",
+    "- CONTRACT_POLICY     : 'warn' (defaut prod) ou 'strict' / 'silent'.",
+    "- DEFAULT_RESULT_LIMIT, MAX_RESULT_LIMIT, MAX_SEARCH_RADIUS_METERS,",
+    "  ARCGIS_TIMEOUT_MS, ARCGIS_CACHE_TTL_MS, REPORT_OUTPUT_DIR : voir README."
+  ],
+  "windows": {
+    "mcpServers": {
+      "annecy-sig": {
+        "command": "node",
+        "args": [
+          "C:/chemin/absolu/vers/annecy-sig-mcp/dist/index.js"
+        ],
+        "env": {
+          "ANNECY_SIG_BASE_URL": "https://portailsig.annecy.fr/server/rest/services",
+          "DEFAULT_MODE": "public",
+          "CONTRACT_POLICY": "warn"
+        }
+      }
+    }
+  },
+  "macos_linux": {
+    "mcpServers": {
+      "annecy-sig": {
+        "command": "node",
+        "args": [
+          "/chemin/absolu/vers/annecy-sig-mcp/dist/index.js"
+        ],
+        "env": {
+          "ANNECY_SIG_BASE_URL": "https://portailsig.annecy.fr/server/rest/services",
+          "DEFAULT_MODE": "public",
+          "CONTRACT_POLICY": "warn"
+        }
+      }
+    }
+  }
+}

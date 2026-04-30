@@ -1,0 +1,36 @@
+{
+  "id": 10,
+  "name": "Stationnement velos",
+  "type": "Feature Layer",
+  "geometryType": "esriGeometryPoint",
+  "capabilities": "Map,Query,Data",
+  "maxRecordCount": 2000,
+  "objectIdField": "OBJECTID",
+  "globalIdField": "GLOBALID",
+  "description": "Arceaux et points de stationnement vélos.",
+  "fields": [
+    { "name": "OBJECTID", "type": "esriFieldTypeOID", "alias": "OBJECTID" },
+    { "name": "denomination", "type": "esriFieldTypeString", "alias": "Dénomination" },
+    { "name": "nom", "type": "esriFieldTypeString", "alias": "Nom" },
+    { "name": "adresse", "type": "esriFieldTypeString", "alias": "Adresse" },
+    { "name": "commune", "type": "esriFieldTypeString", "alias": "Commune" },
+    { "name": "categorie", "type": "esriFieldTypeString", "alias": "Catégorie" },
+    { "name": "sous_categorie", "type": "esriFieldTypeString", "alias": "Sous-catégorie" },
+    { "name": "description", "type": "esriFieldTypeString", "alias": "Description" },
+    { "name": "capacite", "type": "esriFieldTypeInteger", "alias": "Capacité" },
+    { "name": "observations", "type": "esriFieldTypeString", "alias": "Observations" },
+    { "name": "statut", "type": "esriFieldTypeString", "alias": "Statut" },
+    { "name": "type_stationnement", "type": "esriFieldTypeString", "alias": "Type stationnement" },
+    { "name": "zone", "type": "esriFieldTypeString", "alias": "Zone" },
+    { "name": "numero", "type": "esriFieldTypeString", "alias": "Numéro" },
+    { "name": "GLOBALID", "type": "esriFieldTypeGlobalID", "alias": "GLOBALID" },
+    { "name": "identifiant", "type": "esriFieldTypeString", "alias": "Identifiant" }
+  ],
+  "extent": {
+    "xmin": 6.10,
+    "ymin": 45.88,
+    "xmax": 6.18,
+    "ymax": 45.94,
+    "spatialReference": { "wkid": 4326 }
+  }
+}

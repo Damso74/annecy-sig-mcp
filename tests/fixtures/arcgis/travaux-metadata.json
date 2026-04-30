@@ -1,0 +1,32 @@
+{
+  "id": 3,
+  "name": "Travaux",
+  "type": "Feature Layer",
+  "geometryType": "esriGeometryPolygon",
+  "capabilities": "Map,Query,Data",
+  "maxRecordCount": 1000,
+  "objectIdField": "OBJECTID",
+  "globalIdField": "GLOBALID",
+  "description": "Autorisations de voirie / chantiers — usage interne.",
+  "fields": [
+    { "name": "OBJECTID", "type": "esriFieldTypeOID" },
+    { "name": "ac_odp_ref", "type": "esriFieldTypeString" },
+    { "name": "ac_num", "type": "esriFieldTypeString" },
+    { "name": "ac_date_debut", "type": "esriFieldTypeDate" },
+    { "name": "ac_date_fin", "type": "esriFieldTypeDate" },
+    { "name": "controle_resultat", "type": "esriFieldTypeString" },
+    { "name": "titre", "type": "esriFieldTypeString" },
+    { "name": "adresse", "type": "esriFieldTypeString" },
+    { "name": "commune_deleguee", "type": "esriFieldTypeString" },
+    { "name": "description", "type": "esriFieldTypeString" },
+    { "name": "url_pj", "type": "esriFieldTypeString" },
+    { "name": "GLOBALID", "type": "esriFieldTypeGlobalID" }
+  ],
+  "extent": {
+    "xmin": 6.05,
+    "ymin": 45.85,
+    "xmax": 6.20,
+    "ymax": 45.95,
+    "spatialReference": { "wkid": 4326 }
+  }
+}

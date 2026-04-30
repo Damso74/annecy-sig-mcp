@@ -1,0 +1,17 @@
+{
+  "objectIdFieldName": "OBJECTID",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 4326 },
+  "exceededTransferLimit": true,
+  "fields": [{ "name": "OBJECTID", "type": "esriFieldTypeOID" }],
+  "features": [
+    {
+      "attributes": { "OBJECTID": 1, "denomination": "WC truncated A" },
+      "geometry": { "x": 6.13, "y": 45.90 }
+    },
+    {
+      "attributes": { "OBJECTID": 2, "denomination": "WC truncated B" },
+      "geometry": { "x": 6.14, "y": 45.91 }
+    }
+  ]
+}
