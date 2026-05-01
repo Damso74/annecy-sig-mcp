@@ -5,11 +5,9 @@
   "outputDirectory": "dist",
   "functions": {
     "api/mcp.ts": {
-      "runtime": "nodejs20.x",
       "maxDuration": 30
     },
     "api/health.ts": {
-      "runtime": "nodejs20.x",
       "maxDuration": 5
     }
   },
