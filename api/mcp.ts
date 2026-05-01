@@ -1,16 +1,18 @@
 /**
  * Route Vercel `/api/mcp` — transport HTTP MCP Streamable, public-only.
  *
- * Convention de signature : Web standard `Request → Response`. Vercel
- * détecte ce format automatiquement (Fluid Compute / Node fetch handler) et
- * route la requête vers ce handler en mode serverless.
+ * Convention de signature : `export default { fetch(request) { … } }`. C'est
+ * le format Web Standard officiellement supporté par les Vercel Functions
+ * Node.js (équivalent Cloudflare Workers / Hono / Bun.serve). Voir
+ * https://vercel.com/docs/functions/functions-api-reference — les autres
+ * formats (default function, fonctions nommées GET/POST) ne déclenchent pas
+ * la même détection sur tous les runtimes : sans cet objet, le serverless
+ * peut bloquer en `FUNCTION_INVOCATION_TIMEOUT`.
  *
  * Import depuis `../dist/...` (et non `../src/...`) : c'est volontaire. Le
  * bundler Vercel doit pouvoir résoudre l'import sans dépendre de la chaîne
  * TypeScript. `vercel.json` exécute `npm run build` avant le packaging des
- * fonctions, donc `dist/` est garanti présent au moment du déploiement. Cela
- * évite la classe d'erreurs `FUNCTION_INVOCATION_FAILED` due à un `.js`
- * pointé vers un fichier `.ts` non compilé.
+ * fonctions, donc `dist/` est garanti présent au moment du déploiement.
  *
  * Toute la logique (auth, verrou public-only, montage MCP) est dans
  * `src/runtime/httpHandler.ts` ; ce fichier est volontairement minimal pour
@@ -27,6 +29,8 @@ export const config = {
   maxDuration: 30,
 };
 
-export default async function handler(req: Request): Promise<Response> {
-  return handleHttpMcpRequest(req);
-}
+export default {
+  fetch(request: Request): Promise<Response> {
+    return handleHttpMcpRequest(request);
+  },
+};
