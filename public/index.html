@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>annecy-sig-mcp — transport HTTP MCP (public-only)</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        max-width: 720px;
+        margin: 4rem auto;
+        padding: 0 1.5rem;
+        line-height: 1.55;
+      }
+      code, pre { font-family: ui-monospace, SFMono-Regular, "Menlo", Consolas, monospace; }
+      pre {
+        background: rgba(127, 127, 127, 0.12);
+        padding: 1rem;
+        border-radius: 6px;
+        overflow-x: auto;
+      }
+      .badge {
+        display: inline-block;
+        background: rgba(34, 197, 94, 0.18);
+        color: #15803d;
+        font-weight: 600;
+        padding: 0.15rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+      }
+      footer { margin-top: 3rem; opacity: 0.7; font-size: 0.85rem; }
+      a { color: inherit; }
+    </style>
+  </head>
+  <body>
+    <h1>annecy-sig-mcp</h1>
+    <p>
+      Serveur <strong>MCP</strong> (Model Context Protocol) lecture seule pour les couches
+      ArcGIS REST du portail SIG de la Ville d'Annecy.
+      <span class="badge">public-only</span>
+    </p>
+
+    <h2>Endpoints</h2>
+    <ul>
+      <li><a href="/api/health"><code>/api/health</code></a> — diagnostic léger (aucun appel ArcGIS)</li>
+      <li><code>/api/mcp</code> — endpoint MCP Streamable HTTP (Bearer token requis)</li>
+    </ul>
+
+    <h2>Utilisation depuis Cursor</h2>
+    <pre><code>{
+  "mcpServers": {
+    "annecy-sig-remote": {
+      "url": "https://mcp.leadalpes.fr/api/mcp",
+      "headers": {
+        "Authorization": "Bearer &lt;MCP_PUBLIC_READ_TOKEN&gt;"
+      }
+    }
+  }
+}</code></pre>
+
+    <h2>Sécurité</h2>
+    <ul>
+      <li>Lecture seule — aucun écrit ne quitte ce code.</li>
+      <li><code>mode = internal</code> est explicitement <strong>refusé</strong> sur le transport HTTP.</li>
+      <li>Outils internal (<code>list_current_works</code>, <code>list_late_works</code>,
+        <code>generate_internal_dashboard_brief</code>) <strong>non exposés</strong>.</li>
+      <li>Source : <a href="https://github.com/Damso74/annecy-sig-mcp">github.com/Damso74/annecy-sig-mcp</a></li>
+    </ul>
+
+    <footer>
+      annecy-sig-mcp · MIT · transport HTTP via Vercel Functions
+    </footer>
+  </body>
+</html>
