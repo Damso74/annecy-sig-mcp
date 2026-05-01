@@ -10,6 +10,8 @@ import {
   InventoryRunResultSchema,
   LayerActionPlanSchema,
   OpenDataBriefSchema,
+  PublicWorksNearbyResultSchema,
+  PublicWorksResultSchema,
 } from "./index.js";
 import { InventoryLayerRowSchema } from "./inventoryContracts.js";
 import {
@@ -81,6 +83,8 @@ const JOBS: SchemaJob[] = [
   { name: "ChatbotReadinessReport", schema: ChatbotReadinessReportSchema, filename: "chatbot-readiness.schema.json" },
   { name: "LayerActionPlan", schema: LayerActionPlanSchema, filename: "layer-action-plan.schema.json" },
   { name: "InternalDashboardBrief", schema: InternalDashboardBriefSchema, filename: "internal-dashboard-brief.schema.json" },
+  { name: "PublicWorksResult", schema: PublicWorksResultSchema, filename: "public-works.schema.json" },
+  { name: "PublicWorksNearbyResult", schema: PublicWorksNearbyResultSchema, filename: "public-works-nearby.schema.json" },
 ];
 
 export function exportJsonSchemas(outDir: string): { written: string[] } {

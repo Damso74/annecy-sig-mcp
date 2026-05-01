@@ -38,6 +38,9 @@ const REQUIRED_PUBLIC_TOOLS = [
   "generate_open_data_brief",
   "generate_chatbot_readiness_report",
   "generate_layer_action_plan",
+  // V1.0 — vue travaux **public-light** : 15 outils publics au total.
+  "list_public_works",
+  "search_public_works_nearby",
 ] as const;
 
 const FORBIDDEN_INTERNAL_TOOLS = [
@@ -216,6 +219,40 @@ async function expectAuthFailure(baseUrl: string): Promise<{ ok: boolean; messag
   return { ok: true, message: "401 sans Bearer (attendu)" };
 }
 
+/**
+ * Vérifie la réponse au preflight CORS sur `/api/mcp`. Aligné sur le hardening
+ * V1.0 : Authorization + Content-Type + MCP-Protocol-Version, méthodes
+ * GET/POST/OPTIONS, pas de DELETE, pas de credentials.
+ */
+async function checkCorsPreflight(baseUrl: string): Promise<{ ok: boolean; message: string }> {
+  const r = await fetch(`${baseUrl}/api/mcp`, {
+    method: "OPTIONS",
+    headers: {
+      origin: "https://copilot.example.com",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "authorization, content-type, mcp-protocol-version",
+    },
+  });
+  if (r.status !== 204) return { ok: false, message: `attendu 204, reçu ${r.status}` };
+  const allowOrigin = r.headers.get("access-control-allow-origin");
+  const allowHeaders = r.headers.get("access-control-allow-headers");
+  const allowMethods = r.headers.get("access-control-allow-methods");
+  const allowCreds = r.headers.get("access-control-allow-credentials");
+  if (allowOrigin !== "*") {
+    return { ok: false, message: `Allow-Origin=${allowOrigin}` };
+  }
+  if (allowHeaders !== "Authorization, Content-Type, MCP-Protocol-Version") {
+    return { ok: false, message: `Allow-Headers=${allowHeaders}` };
+  }
+  if (allowMethods !== "GET, POST, OPTIONS") {
+    return { ok: false, message: `Allow-Methods=${allowMethods}` };
+  }
+  if (allowCreds !== null) {
+    return { ok: false, message: `Allow-Credentials=${allowCreds} (interdit)` };
+  }
+  return { ok: true, message: "preflight CORS conforme (no cookies, no DELETE)" };
+}
+
 async function main(): Promise<void> {
   // Force la config remote en mode public-only avec auth Bearer activée pour
   // exercer le verrou et l'auth.
@@ -241,6 +278,9 @@ async function main(): Promise<void> {
     const noAuth = await expectAuthFailure(baseUrl);
     record("auth: 401 sans Bearer", noAuth.ok, noAuth.message);
 
+    const cors = await checkCorsPreflight(baseUrl);
+    record("CORS OPTIONS preflight conforme", cors.ok, cors.message);
+
     const tools = await listToolsViaMcp(baseUrl, SMOKE_TOKEN);
     const missing = REQUIRED_PUBLIC_TOOLS.filter(n => !tools.includes(n));
     const leaked = FORBIDDEN_INTERNAL_TOOLS.filter(n => tools.includes(n));
@@ -253,6 +293,21 @@ async function main(): Promise<void> {
       "tools/list n'expose pas les outils internal",
       leaked.length === 0,
       leaked.length === 0 ? "OK" : `fuite : ${leaked.join(", ")}`,
+    );
+    record(
+      "tools/list expose exactement le périmètre attendu (15 outils)",
+      tools.length === REQUIRED_PUBLIC_TOOLS.length,
+      `attendu ${REQUIRED_PUBLIC_TOOLS.length}, reçu ${tools.length}`,
+    );
+    record(
+      "list_public_works présent dans le remote HTTP",
+      tools.includes("list_public_works"),
+      tools.includes("list_public_works") ? "OK" : "list_public_works manquant",
+    );
+    record(
+      "search_public_works_nearby présent dans le remote HTTP",
+      tools.includes("search_public_works_nearby"),
+      tools.includes("search_public_works_nearby") ? "OK" : "search_public_works_nearby manquant",
     );
 
     const internalRefusal = await callToolModeInternal(baseUrl, SMOKE_TOKEN);

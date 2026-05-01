@@ -33,6 +33,9 @@ const REQUIRED_TOOLS = [
   "generate_chatbot_readiness_report",
   "generate_layer_action_plan",
   "generate_internal_dashboard_brief",
+  // V1.0 — vue travaux **public-light**, exposée localement aussi.
+  "list_public_works",
+  "search_public_works_nearby",
 ] as const;
 
 type SmokeOutcome = {

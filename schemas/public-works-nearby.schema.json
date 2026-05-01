@@ -1,0 +1,479 @@
+{
+  "$ref": "#/definitions/PublicWorksNearbyResult",
+  "definitions": {
+    "ServiceKey": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Clé d’un service du registre (ex. `equipements`, `mobilite`, `travaux`)."
+    },
+    "LayerId": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Identifiant numérique d’une couche ArcGIS (entier ≥ 0)."
+    },
+    "ServerVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version applicative du serveur MCP — issue de package.json (`SERVER_VERSION`)."
+    },
+    "RuntimeMs": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Durée totale du traitement côté serveur, exprimée en millisecondes."
+    },
+    "ReportFormat": {
+      "type": "string",
+      "enum": [
+        "json",
+        "markdown"
+      ],
+      "description": "Format de sortie d’un rapport (JSON structuré ou Markdown)."
+    },
+    "VisibilityMode": {
+      "type": "string",
+      "enum": [
+        "public",
+        "internal"
+      ],
+      "description": "Mode de visibilité : `public` filtre les couches internal, `internal` les inclut."
+    },
+    "SampleStatus": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "empty",
+        "failed"
+      ],
+      "description": "Statut de l’échantillon ArcGIS récupéré (succès non vide / vide / échec)."
+    },
+    "GeometryStatus": {
+      "type": "string",
+      "enum": [
+        "present",
+        "missing",
+        "unknown"
+      ],
+      "description": "Présence de la géométrie sur l’échantillon ArcGIS."
+    },
+    "RiskLevel": {
+      "type": "string",
+      "enum": [
+        "green",
+        "orange",
+        "red"
+      ],
+      "description": "Niveau de risque métier/juridique déclaré dans le registre."
+    },
+    "UsageStatus": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "usable_now",
+        "usable_with_caution",
+        "needs_field_mapping",
+        "needs_data_cleaning",
+        "to_investigate_technically",
+        "internal_only",
+        "not_usable"
+      ],
+      "description": "Statut métier d’usage agrégé sur la couche (V0.5+)."
+    },
+    "SamplingMode": {
+      "type": "string",
+      "enum": [
+        "fast",
+        "standard"
+      ],
+      "description": "Mode d’échantillonnage utilisé pour la passe d’inventaire."
+    },
+    "SampleFallbackUsed": {
+      "type": "string",
+      "enum": [
+        "registry_valid",
+        "star",
+        "objectid_only",
+        "none"
+      ],
+      "description": "Stratégie de fallback utilisée pour récupérer l’échantillon."
+    },
+    "InventoryTarget": {
+      "type": "object",
+      "properties": {
+        "serviceKey": {
+          "$ref": "#/definitions/ServiceKey"
+        },
+        "layerId": {
+          "$ref": "#/definitions/LayerId",
+          "description": "Identifiant numérique d’une couche ArcGIS (entier ≥ 0)."
+        }
+      },
+      "required": [
+        "serviceKey"
+      ],
+      "additionalProperties": false,
+      "description": "Cible d’inventaire — sans `layerId`, toutes les couches visibles du service dans le mode courant."
+    },
+    "InventoryDiagnostic": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Code court du diagnostic (ex. SAMPLE_FAILED, GEOMETRY_MISSING)."
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "description": "Sévérité du diagnostic."
+        },
+        "message": {
+          "type": "string",
+          "description": "Message lisible (sanitisé en amont)."
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Détails additionnels (libre)."
+        }
+      },
+      "required": [
+        "code",
+        "severity",
+        "message"
+      ],
+      "additionalProperties": false,
+      "description": "Diagnostic structuré rattaché à une couche d’inventaire."
+    },
+    "InventoryDiagnosticsCounts": {
+      "type": "object",
+      "properties": {
+        "failedSamples": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Nombre de couches en échec d’échantillon."
+        },
+        "emptySamples": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Nombre de couches à échantillon vide."
+        },
+        "geometryUnknownLayers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Nombre de couches dont la géométrie n’a pas pu être évaluée."
+        }
+      },
+      "required": [
+        "failedSamples",
+        "emptySamples",
+        "geometryUnknownLayers"
+      ],
+      "additionalProperties": false,
+      "description": "Agrégats compacts des diagnostics, exposés dans `source.diagnostics`."
+    },
+    "InventoryExecutionMeta": {
+      "type": "object",
+      "properties": {
+        "concurrency": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "description": "Niveau de parallélisme effectif."
+        },
+        "fast": {
+          "type": "boolean",
+          "description": "Indique si le mode rapide a été utilisé (sample = 1)."
+        },
+        "requestedSampleLimit": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Limite d’échantillon demandée."
+        },
+        "effectiveSampleLimit": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Limite d’échantillon réellement transmise à ArcGIS."
+        },
+        "serviceKeysFilter": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ServiceKey"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Liste des `serviceKeys` filtrants, ou null si non utilisé."
+        },
+        "targetsFilter": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/InventoryTarget"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Liste des cibles `targets` filtrantes, ou null si non utilisé."
+        }
+      },
+      "required": [
+        "concurrency",
+        "fast",
+        "requestedSampleLimit",
+        "effectiveSampleLimit",
+        "serviceKeysFilter",
+        "targetsFilter"
+      ],
+      "additionalProperties": false,
+      "description": "Métadonnées d’exécution de la passe d’inventaire (concurrency, fast, filtres)."
+    },
+    "InventorySourceV1": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "annecy_sig_mcp_inventory"
+        },
+        "schemaVersion": {
+          "type": "string",
+          "const": "inventory.v1",
+          "description": "Version stable du schéma `inventory.v1`."
+        },
+        "serverVersion": {
+          "$ref": "#/definitions/ServerVersion"
+        },
+        "runtimeMs": {
+          "$ref": "#/definitions/RuntimeMs"
+        },
+        "layersScanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Nombre de couches effectivement parcourues."
+        },
+        "diagnostics": {
+          "$ref": "#/definitions/InventoryDiagnosticsCounts"
+        },
+        "execution": {
+          "$ref": "#/definitions/InventoryExecutionMeta"
+        }
+      },
+      "required": [
+        "type",
+        "schemaVersion",
+        "serverVersion",
+        "runtimeMs",
+        "layersScanned",
+        "diagnostics",
+        "execution"
+      ],
+      "additionalProperties": false,
+      "description": "Bloc `source` d’un résultat d’inventaire (contrat `inventory.v1`)."
+    },
+    "PublicWorksNearbyResult": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id_public": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Identifiant opaque public (jamais l’objectid brut tel quel)."
+              },
+              "titre_public": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Titre simplifié, sécurisé pour affichage citoyen (ne contient ni numéro d’arrêté brut, ni référence interne)."
+              },
+              "statut_public": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/PublicWorksNearbyResult/properties/items/items/properties/titre_public/anyOf/0"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Statut simplifié (ex. « En cours », « À venir », « En retard »)."
+              },
+              "date_debut_iso": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Date de début au format ISO 8601 (ou null si non disponible)."
+              },
+              "date_fin_iso": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Date de fin au format ISO 8601 (ou null si non disponible)."
+              },
+              "secteur_public": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/PublicWorksNearbyResult/properties/items/items/properties/titre_public/anyOf/0"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Adresse ou secteur simplifié (jamais inventé) — null si la donnée n’est pas fiable."
+              },
+              "commune_deleguee": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/PublicWorksNearbyResult/properties/items/items/properties/titre_public/anyOf/0"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Commune déléguée si présente et non sensible."
+              },
+              "geometry": {
+                "description": "Géométrie GeoJSON simplifiée — uniquement si `includeGeometry=true` et que la donnée existe."
+              },
+              "qualityFlags": {
+                "type": "object",
+                "properties": {
+                  "missingGeometry": {
+                    "type": "boolean"
+                  },
+                  "missingAddress": {
+                    "type": "boolean"
+                  },
+                  "missingTitle": {
+                    "type": "boolean"
+                  },
+                  "dateIncoherence": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Drapeaux qualité publics — sans révéler de champ technique sensible (uniquement booléens)."
+              },
+              "distance_m": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Distance en mètres au point d’interrogation, null si non calculable."
+              }
+            },
+            "required": [
+              "id_public",
+              "titre_public",
+              "statut_public",
+              "date_debut_iso",
+              "date_fin_iso",
+              "secteur_public",
+              "commune_deleguee",
+              "qualityFlags",
+              "distance_m"
+            ],
+            "additionalProperties": false,
+            "description": "Élément travaux public-light enrichi de la distance Haversine au point requêté."
+          }
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "radiusMeters": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "annecy_sig_mcp_public_works_nearby"
+            },
+            "schemaVersion": {
+              "type": "string",
+              "const": "public_works.v1"
+            },
+            "serverVersion": {
+              "$ref": "#/definitions/ServerVersion"
+            },
+            "mode": {
+              "$ref": "#/definitions/VisibilityMode"
+            },
+            "filtered": {
+              "type": "boolean",
+              "const": true,
+              "description": "Toujours `true` : la sortie passe par `normalizePublicWorkFeature`."
+            },
+            "rawLayerExposed": {
+              "type": "boolean",
+              "const": false,
+              "description": "Toujours `false` : aucune entité brute ArcGIS n’est exposée par cet outil."
+            },
+            "consultedAt": {
+              "type": "string",
+              "description": "Date/heure ISO de consultation côté serveur."
+            },
+            "disclaimer": {
+              "type": "string",
+              "description": "Avertissement à afficher au citoyen."
+            }
+          },
+          "required": [
+            "type",
+            "schemaVersion",
+            "serverVersion",
+            "mode",
+            "filtered",
+            "rawLayerExposed",
+            "consultedAt",
+            "disclaimer"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "items",
+        "count",
+        "radiusMeters",
+        "warnings",
+        "source"
+      ],
+      "additionalProperties": false,
+      "description": "Résultat `search_public_works_nearby` — contrat `public_works.v1`."
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

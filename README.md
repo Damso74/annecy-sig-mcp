@@ -108,9 +108,12 @@ Détails et règles d’ajout d’une couche :
 | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `[docs/TECHNICAL_CONTRACTS.md](docs/TECHNICAL_CONTRACTS.md)`                                   | Contrats Zod, `schemaVersion`, `usageProfiles`, architecture du code |
 | `[docs/SECURITY.md](docs/SECURITY.md)`                                                         | Lecture seule, allowlist, sanitation, mode public/internal           |
+| `[docs/PUBLIC_REMOTE_USAGE.md](docs/PUBLIC_REMOTE_USAGE.md)`                                   | Mode d’emploi détaillé du serveur MCP distant public                 |
+| `[docs/DATA_CATALOG_PUBLIC_REMOTE.md](docs/DATA_CATALOG_PUBLIC_REMOTE.md)`                     | Catalogue des données publiques (services, couches, champs)          |
 | `[docs/RECETTE_TERRAIN.md](docs/RECETTE_TERRAIN.md)`                                           | Six prompts détaillés + check-lists                                  |
 | `[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)`                                       | Pré-vol, build/tests, smoke, recette, tag Git                        |
 | `[examples/cursor-mcp-config.json](examples/cursor-mcp-config.json)`                           | Configuration MCP prête à coller (Windows + macOS/Linux)             |
+| `[examples/copilot-studio-instructions.md](examples/copilot-studio-instructions.md)`           | Modèle d’instructions Copilot Studio (assistant SIG public)          |
 | `[examples/prompts.md](examples/prompts.md)`                                                   | Catalogue de prompts copier-coller (public, internal, chatbot, …)    |
 | `[examples/terrain-recette-results.template.md](examples/terrain-recette-results.template.md)` | Template à remplir pendant la recette terrain                        |
 | `[CHANGELOG.md](CHANGELOG.md)`                                                                 | Historique des versions                                              |
@@ -123,10 +126,29 @@ Détails et règles d’ajout d’une couche :
 `detect_data_quality_issues`, `inventory_all_layers`,
 `recommend_open_data_candidates`, `generate_inventory_report`,
 `generate_open_data_brief`, `generate_chatbot_readiness_report`,
-`generate_internal_dashboard_brief`, `generate_layer_action_plan`.
+`generate_internal_dashboard_brief`, `generate_layer_action_plan`,
+`list_public_works`, `search_public_works_nearby`.
 
 Détails de chaque outil et de leurs structured outputs :
 `[docs/TECHNICAL_CONTRACTS.md](docs/TECHNICAL_CONTRACTS.md)`.
+
+### 7.1 Travaux publics filtrés (V1.0)
+
+Deux outils dédiés exposent une vue **public-light** des travaux, utilisable
+en stdio local **et** sur le remote HTTP public :
+
+- `list_public_works` : liste filtrée (titre simplifié, statut, dates,
+secteur, commune). Aucun champ technique, jamais de pièce jointe, jamais
+de numéro complet d’arrêté, jamais de description libre.
+- `search_public_works_nearby` : travaux public-light autour d’un point
+(lat/lon + rayon plafonné par `MAX_SEARCH_RADIUS_METERS`).
+
+> Ces outils ne donnent **jamais** accès à la couche travaux brute. La couche
+> brute reste réservée au mode internal (MCP local stdio) via
+> `list_current_works` / `list_late_works`.
+
+Détails métier et liste exhaustive des champs autorisés / interdits :
+`[docs/DATA_CATALOG_PUBLIC_REMOTE.md](docs/DATA_CATALOG_PUBLIC_REMOTE.md)`.
 
 ## 8. Tests
 
@@ -171,18 +193,21 @@ https://mcp.leadalpes.fr/api/health
 
 À renseigner dans **Project → Settings → Environment Variables** :
 
-| Variable                       | Valeur recommandée                                           | Remarque                                  |
-| ------------------------------ | ------------------------------------------------------------ | ----------------------------------------- |
-| `ANNECY_SIG_BASE_URL`          | `https://portailsig.annecy.fr/server/rest/services`          | Allowlist d'hôte                          |
-| `DEFAULT_MODE`                 | `public`                                                     | Mode par défaut                           |
-| `CONTRACT_POLICY`              | `warn`                                                       | `strict` casserait les rapports en prod   |
-| `REMOTE_PUBLIC_ONLY`           | `true`                                                       | **Ne jamais désactiver** sur l'URL publique |
-| `REMOTE_ALLOW_INTERNAL_TOOLS`  | `false`                                                      | Garde les outils travaux invisibles       |
-| `MCP_PUBLIC_READ_TOKEN`        | (générer un secret aléatoire, ex. `openssl rand -hex 32`)    | Sans valeur → auth désactivée             |
-| `MAX_RESULT_LIMIT`             | `1000`                                                       | Plafond résultats                         |
-| `MAX_SEARCH_RADIUS_METERS`     | `5000`                                                       | Plafond rayon search_nearby               |
-| `ARCGIS_TIMEOUT_MS`            | `10000`                                                      | Timeout ArcGIS                            |
-| `ARCGIS_CACHE_TTL_MS`          | `300000`                                                     | Cache GET en mémoire (5 min)              |
+
+| Variable                      | Valeur recommandée                                        | Remarque                                    |
+| ----------------------------- | --------------------------------------------------------- | ------------------------------------------- |
+| `ANNECY_SIG_BASE_URL`         | `https://portailsig.annecy.fr/server/rest/services`       | Allowlist d'hôte                            |
+| `DEFAULT_MODE`                | `public`                                                  | Mode par défaut                             |
+| `CONTRACT_POLICY`             | `warn`                                                    | `strict` casserait les rapports en prod     |
+| `REMOTE_PUBLIC_ONLY`          | `true`                                                    | **Ne jamais désactiver** sur l'URL publique |
+| `REMOTE_ALLOW_INTERNAL_TOOLS` | `false`                                                   | Garde les outils travaux invisibles         |
+| `MCP_PUBLIC_READ_TOKEN`       | (générer un secret aléatoire, ex. `openssl rand -hex 32`) | Sans valeur → auth désactivée               |
+| `PUBLIC_WORK_ID_SALT`         | (générer un secret aléatoire, ex. `openssl rand -hex 32`) | **Obligatoire en prod** : sel SHA-256 pour `id_public` opaque (vue travaux public-light) |
+| `MAX_RESULT_LIMIT`            | `1000`                                                    | Plafond résultats                           |
+| `MAX_SEARCH_RADIUS_METERS`    | `5000`                                                    | Plafond rayon search_nearby                 |
+| `ARCGIS_TIMEOUT_MS`           | `10000`                                                   | Timeout ArcGIS                              |
+| `ARCGIS_CACHE_TTL_MS`         | `300000`                                                  | Cache GET en mémoire (5 min)                |
+
 
 Aucun token portail SIG n'est requis (lecture seule).
 
@@ -209,24 +234,24 @@ Si `MCP_PUBLIC_READ_TOKEN` n'est pas défini côté serveur, supprimer le bloc
 ### 9.4 Étapes de déploiement
 
 1. Créer un projet Vercel et le lier à ce dépôt
-   (`vercel link`, ou via le dashboard Vercel).
+  (`vercel link`, ou via le dashboard Vercel).
 2. Renseigner les variables d'environnement (§9.2).
 3. Déployer (`vercel --prod` ou via la CI Vercel).
 4. **Domaine custom** `mcp.leadalpes.fr` :
-   - Vercel → Project → Settings → Domains → *Add Domain* `mcp.leadalpes.fr`.
-   - Suivre l'instruction Vercel (CNAME `cname.vercel-dns.com` ou ALIAS).
-   - Ajouter l'enregistrement DNS chez votre registrar / fournisseur DNS
-     (cette étape sort du scope du repo).
+  - Vercel → Project → Settings → Domains → *Add Domain* `mcp.leadalpes.fr`.
+  - Suivre l'instruction Vercel (CNAME `cname.vercel-dns.com` ou ALIAS).
+  - Ajouter l'enregistrement DNS chez votre registrar / fournisseur DNS
+  (cette étape sort du scope du repo).
 5. Vérifier `https://mcp.leadalpes.fr/api/health` → `{ "status": "ok" }`.
 6. Brancher Cursor avec `examples/cursor-mcp-remote-config.json`.
 
 ### 9.5 Avertissement
 
 - Le transport HTTP distant est **public-only**. Tout appel d'outil avec
-  `mode=internal` est explicitement refusé avec un message clair invitant à
-  utiliser le MCP local stdio.
+`mode=internal` est explicitement refusé avec un message clair invitant à
+utiliser le MCP local stdio.
 - Les outils internal-only (`generate_internal_dashboard_brief`,
-  `list_current_works`, `list_late_works`) **ne sont pas exposés** par défaut.
+`list_current_works`, `list_late_works`) **ne sont pas exposés** par défaut.
 - Pour ces outils, garder le bootstrap stdio local (`examples/cursor-mcp-config.json`).
 
 ## Licence

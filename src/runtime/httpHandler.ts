@@ -53,6 +53,9 @@ export const REMOTE_PUBLIC_TOOLS = [
   "generate_open_data_brief",
   "generate_chatbot_readiness_report",
   "generate_layer_action_plan",
+  // V1.0 — vue travaux **public-light** (filtrée, jamais brute).
+  "list_public_works",
+  "search_public_works_nearby",
 ] as const;
 
 /** Outils explicitement exclus du périmètre public remote. */
@@ -69,15 +72,24 @@ function getCfg(options?: HttpHandlerOptions): AppConfig {
   return cfg;
 }
 
+/**
+ * En-têtes CORS du transport HTTP MCP — alignés sur le hardening V1.0 :
+ *
+ * - `Access-Control-Allow-Origin: *` — Cursor / Copilot Studio appellent en
+ *   serveur-à-serveur, mais on reste ouvert aux clients navigateur (pas de
+ *   cookies, donc `*` est sûr) ;
+ * - `Access-Control-Allow-Headers` réduit à `Authorization, Content-Type,
+ *   MCP-Protocol-Version` — `mcp-session-id` est inutile en stateless ;
+ * - `Access-Control-Allow-Methods` réduit à `GET, POST, OPTIONS` — pas de
+ *   `DELETE` car aucune session n’est conservée côté serveur ;
+ * - **Pas** de `Access-Control-Allow-Credentials: true` — les cookies sont
+ *   strictement interdits sur ce transport (auth Bearer uniquement).
+ */
 function corsHeaders(): Record<string, string> {
-  // Cursor envoie ses requêtes serveur-à-serveur (pas depuis un navigateur),
-  // mais on reste tolérant pour faciliter les tests manuels (curl, Postman,
-  // navigateur). On expose uniquement les en-têtes nécessaires.
   return {
     "access-control-allow-origin": "*",
-    "access-control-allow-headers":
-      "authorization, content-type, mcp-session-id, mcp-protocol-version",
-    "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+    "access-control-allow-headers": "Authorization, Content-Type, MCP-Protocol-Version",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-max-age": "86400",
   };
 }

@@ -8,6 +8,7 @@ import { runListLayers } from "./tools/listLayers.js";
 import { runDescribeLayer } from "./tools/describeLayer.js";
 import { runQueryLayer, runSearchNearby } from "./tools/queryLayer.js";
 import { runListCurrentWorks, runListLateWorks } from "./tools/works.js";
+import { runListPublicWorks, runSearchPublicWorksNearby } from "./tools/publicWorks.js";
 import { runDetectDataQualityIssues } from "./tools/quality.js";
 import { runCountLayer } from "./tools/countLayer.js";
 import { runInventoryAllLayers } from "./tools/inventoryAllLayers.js";
@@ -331,6 +332,98 @@ export function registerAnnecySigTools(
       },
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // V1.0 — Travaux public-light. Exposés en local **et** en remote public car
+  // ils sont strictement filtrés (jamais de pièce jointe, jamais de description
+  // brute, jamais d’identifiant interne). Ils n’ouvrent **pas** la couche
+  // travaux brute (cf. `list_current_works` / `list_late_works`, qui restent
+  // internal-only).
+  // ---------------------------------------------------------------------------
+  server.registerTool(
+    "list_public_works",
+    {
+      description:
+        "Liste **filtrée public-light** des travaux (titre simplifié, statut, dates, secteur). Aucun champ technique ni pièce jointe. Réservé `mode=public`.",
+      inputSchema: {
+        mode: z
+          .literal("public")
+          .optional()
+          .describe("Toujours `public` — les autres valeurs sont refusées explicitement."),
+        date: z
+          .string()
+          .optional()
+          .describe("Date de référence YYYY-MM-DD (défaut : date du jour serveur)."),
+        status: z
+          .enum(["active", "upcoming", "late", "all"])
+          .optional()
+          .describe("Filtre métier (défaut `active`)."),
+        limit: z.number().int().optional().describe("Plafond 100 (défaut 20)."),
+        includeGeometry: z
+          .boolean()
+          .optional()
+          .describe("Inclure la géométrie GeoJSON (défaut false). Aucune coordonnée n’est inventée."),
+        commune: z
+          .string()
+          .optional()
+          .describe("Filtre `commune_deleguee` exact (sans wildcards, longueur ≤ 80)."),
+      },
+    },
+    async args => {
+      try {
+        return jsonOk(
+          await runListPublicWorks(cfg, {
+            mode: args.mode,
+            date: args.date,
+            status: args.status,
+            limit: args.limit,
+            includeGeometry: args.includeGeometry,
+            commune: args.commune,
+          }),
+        );
+      } catch (e) {
+        return jsonErr(e);
+      }
+    },
+  );
+
+  server.registerTool(
+    "search_public_works_nearby",
+    {
+      description:
+        "Travaux **public-light** autour d’un point (latitude/longitude) — filtre spatial serveur si possible, fallback Haversine. Distance en mètres dans chaque item.",
+      inputSchema: {
+        latitude: z.number(),
+        longitude: z.number(),
+        radiusMeters: z
+          .number()
+          .optional()
+          .describe("Rayon en mètres, plafonné par MAX_SEARCH_RADIUS_METERS (défaut 500)."),
+        date: z.string().optional().describe("Date de référence YYYY-MM-DD (défaut jour)."),
+        limit: z.number().int().optional().describe("Plafond 50 (défaut 10)."),
+        includeGeometry: z
+          .boolean()
+          .optional()
+          .describe("Inclure la géométrie GeoJSON (défaut false)."),
+      },
+    },
+    async args => {
+      try {
+        return jsonOk(
+          await runSearchPublicWorksNearby(cfg, {
+            latitude: args.latitude,
+            longitude: args.longitude,
+            radiusMeters: args.radiusMeters,
+            date: args.date,
+            limit: args.limit,
+            includeGeometry: args.includeGeometry,
+          }),
+        );
+      } catch (e) {
+        return jsonErr(e);
+      }
+    },
+  );
 
   server.registerTool(
     "count_layer",

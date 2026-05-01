@@ -5,6 +5,7 @@ import {
   INVENTORY_SCHEMA_VERSION,
   LAYER_ACTION_PLAN_SCHEMA_VERSION,
   OPEN_DATA_SCHEMA_VERSION,
+  PUBLIC_WORKS_SCHEMA_VERSION,
   REPORT_SCHEMA_VERSION,
 } from "../runtime/version.js";
 
@@ -186,6 +187,7 @@ export const ChatbotSchemaVersionLiteral = z.literal(CHATBOT_SCHEMA_VERSION);
 export const ReportSchemaVersionLiteral = z.literal(REPORT_SCHEMA_VERSION);
 export const LayerActionPlanSchemaVersionLiteral = z.literal(LAYER_ACTION_PLAN_SCHEMA_VERSION);
 export const InternalDashboardSchemaVersionLiteral = z.literal(INTERNAL_DASHBOARD_SCHEMA_VERSION);
+export const PublicWorksSchemaVersionLiteral = z.literal(PUBLIC_WORKS_SCHEMA_VERSION);
 
 /** Alias historique conservé pour compatibilité d’import — V0.8 utilisait ce nom. */
 export const NonEmptyString = z.string().min(1);

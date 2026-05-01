@@ -60,3 +60,4 @@ export const CHATBOT_SCHEMA_VERSION = "chatbot_readiness.v1" as const;
 export const REPORT_SCHEMA_VERSION = "report.v1" as const;
 export const INTERNAL_DASHBOARD_SCHEMA_VERSION = "internal_dashboard.v1" as const;
 export const LAYER_ACTION_PLAN_SCHEMA_VERSION = "layer_action_plan.v1" as const;
+export const PUBLIC_WORKS_SCHEMA_VERSION = "public_works.v1" as const;
