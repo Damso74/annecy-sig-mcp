@@ -661,7 +661,8 @@ export const SERVICE_REGISTRY = [
     serviceKey: "travaux",
     servicePath: TRVX_PATH,
     title: "Travaux",
-    description: "Travaux et autorisations (données sensibles / internes par défaut).",
+    description:
+      "Travaux et autorisations : couche brute réservée au mode internal. Sur le MCP public HTTP, consultation citoyenne uniquement via les outils list_public_works et search_public_works_nearby (vue filtrée).",
     defaultVisibility: "internal" as const,
     defaultRisk: "orange" as const,
   },

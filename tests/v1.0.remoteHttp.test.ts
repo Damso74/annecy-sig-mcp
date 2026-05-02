@@ -107,13 +107,26 @@ describe("V1.0 — createAnnecySigMcpServer en mode remote public", () => {
       });
       expect(r.isError).not.toBe(true);
       const text = (r.content as { type: string; text: string }[])[0]!.text;
-      const payload = JSON.parse(text) as { services: { serviceKey: string }[] };
+      const payload = JSON.parse(text) as {
+        services: {
+          serviceKey: string;
+          layersCount?: number;
+          publicCitizenAccess?: { tools: string[]; explanation: string };
+        }[];
+      };
       const keys = payload.services.map(s => s.serviceKey);
       // En mode public, le service `travaux` n'a aucune couche visible mais
       // peut être listé selon `runListServices` ; on vérifie au moins
       // équipements et mobilité.
       expect(keys).toContain("equipements");
       expect(keys).toContain("mobilite");
+      const travaux = payload.services.find(s => s.serviceKey === "travaux");
+      expect(travaux?.layersCount).toBe(0);
+      expect(travaux?.publicCitizenAccess?.tools).toEqual([
+        "list_public_works",
+        "search_public_works_nearby",
+      ]);
+      expect(travaux?.publicCitizenAccess?.explanation).toMatch(/vue citoyenne filtrée/i);
     } finally {
       await client.close();
       await server.close();

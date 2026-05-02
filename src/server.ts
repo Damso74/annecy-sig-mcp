@@ -137,7 +137,7 @@ export function registerAnnecySigTools(
     "list_services",
     {
       description:
-        "Liste les services SIG Annecy autorisés par l’allowlist (avec nombre de couches visibles selon le mode).",
+        "Liste les services SIG Annecy autorisés par l’allowlist (nombre de couches visibles selon le mode). En mode public, le service « travaux » a souvent layersCount=0 pour les couches brutes ; le payload inclut alors publicCitizenAccess avec list_public_works et search_public_works_nearby.",
       inputSchema: {
         mode: modeSchema.optional().describe("public | internal (défaut depuis DEFAULT_MODE)"),
       },
