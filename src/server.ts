@@ -844,9 +844,20 @@ export function createAnnecySigMcpServer(
   return server;
 }
 
-/** Compat ascendante — utilisé par `src/index.ts` (stdio) et plusieurs tests. */
+/**
+ * Compat ascendante — utilisé par `src/index.ts` (stdio).
+ *
+ * Bootstrap stdio local : on respecte explicitement `cfg.defaultMode` (lu depuis
+ * `process.env.DEFAULT_MODE`). Sans cette propagation, `DEFAULT_RUNTIME_OPTIONS`
+ * forcerait silencieusement `defaultMode: "public"` et `cfg.defaultMode` ne
+ * serait jamais consulté par `resolveEffectiveMode` (le `??` n'est jamais
+ * déclenché puisque `options.defaultMode` est toujours défini).
+ */
 export function createMcpServer(cfg: AppConfig): McpServer {
-  return createAnnecySigMcpServer(cfg);
+  return createAnnecySigMcpServer(cfg, {
+    transport: "stdio",
+    defaultMode: cfg.defaultMode,
+  });
 }
 
 export const REMOTE_INTERNAL_REFUSAL = REMOTE_INTERNAL_REFUSAL_MESSAGE;
