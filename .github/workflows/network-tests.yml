@@ -27,3 +27,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      # Drift detection live : si une couche ArcGIS a changé de schéma,
+      # ce job échoue → relancer `npm run sync:registry` localement.
+      - name: Vérifier l'alignement registre ↔ ArcGIS (live)
+        run: npm run check:registry

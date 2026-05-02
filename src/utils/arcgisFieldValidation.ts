@@ -67,3 +67,44 @@ export function validateRegistryFieldsAgainstArcGIS(
     supportsQuery: layerSupportsQuery(meta),
   };
 }
+
+/**
+ * Liste `outFields` réellement envoyable à ArcGIS pour une couche donnée :
+ * intersection registre ↔ métadonnées (`f=pjson`), plus champ d’identifiant si absent.
+ * Évite les HTTP 400 « Failed to execute query » lorsque le registre annonce des champs
+ * génériques absents d’une sous-couche (ex. mobilité / bornes, équipements / écoles).
+ */
+export function resolveArcgisOutFields(
+  requestedRegistryFields: readonly string[],
+  meta: EsriLayerMetadata,
+): { arcgisFieldNames: string[]; missingRegistryFields: string[] } {
+  const arcgisFields = meta.fields ?? [];
+  if (arcgisFields.length === 0) {
+    return {
+      arcgisFieldNames: [...requestedRegistryFields],
+      missingRegistryFields: [],
+    };
+  }
+
+  const v = validateRegistryFieldsAgainstArcGIS([...requestedRegistryFields], meta);
+  const byLc = new Map<string, string>();
+  for (const f of arcgisFields) {
+    if (f?.name) byLc.set(f.name.toLowerCase(), f.name);
+  }
+
+  let out = [...v.validFields];
+  const seenLc = new Set(out.map(x => x.toLowerCase()));
+  const oidRaw = v.objectIdField?.trim();
+  const oid =
+    (oidRaw ? byLc.get(oidRaw.toLowerCase()) : undefined) || byLc.get("objectid") || undefined;
+
+  if (oid && !seenLc.has(oid.toLowerCase())) {
+    out.unshift(oid);
+  }
+
+  if (out.length === 0) {
+    out = oid ? [oid] : [...requestedRegistryFields];
+  }
+
+  return { arcgisFieldNames: out, missingRegistryFields: v.missingFields };
+}

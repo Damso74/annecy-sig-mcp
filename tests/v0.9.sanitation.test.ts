@@ -8,6 +8,7 @@ import { runGenerateInternalDashboardBrief } from "../src/tools/generateInternal
 import {
   defaultRegistryMatchers,
   installMockArcgisClient,
+  metaMatcher,
   queryMatcher,
 } from "./helpers/mockArcgisClient.js";
 
@@ -151,6 +152,11 @@ describe("V0.9 — sanitation des exports (json + markdown)", () => {
     // secret, bearer, attachment — la chaîne de redaction `normalizeTravauxFeature` +
     // `redactTravail` doit tout retirer du brief.
     const { restore } = installMockArcgisClient([
+      {
+        match: metaMatcher("TRAVAUX/MapServer", 3),
+        fixture: "travaux-metadata.json",
+        label: "travaux-meta-sanitation",
+      },
       {
         match: queryMatcher("TRAVAUX/MapServer", 3),
         fixture: "travaux-sensitive-query-esri.json",

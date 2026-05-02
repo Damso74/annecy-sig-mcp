@@ -37,6 +37,8 @@ export interface AppConfig {
   defaultMode: "public" | "internal";
   arcgisTimeoutMs: number;
   arcgisCacheTtlMs: number;
+  /** TTL spécifique pour les schémas de couches (`?f=pjson`) — change rarement. */
+  arcgisMetadataCacheTtlMs: number;
   reportOutputDir: string;
   /** Hostname autorisée pour les requêtes ArcGIS (sans schéma). */
   allowedHost: string;
@@ -90,6 +92,7 @@ export function loadConfig(): AppConfig {
   const maxResultLimit = readEnvInt("MAX_RESULT_LIMIT", 1000);
   const arcgisTimeoutMs = readEnvInt("ARCGIS_TIMEOUT_MS", 10_000);
   const arcgisCacheTtlMs = readEnvInt("ARCGIS_CACHE_TTL_MS", 5 * 60_000);
+  const arcgisMetadataCacheTtlMs = readEnvInt("ARCGIS_METADATA_CACHE_TTL_MS", 30 * 60_000);
   const maxSearchRadiusMeters = readEnvInt("MAX_SEARCH_RADIUS_METERS", 5000);
   return {
     annecySigBaseUrl,
@@ -98,6 +101,7 @@ export function loadConfig(): AppConfig {
     defaultMode: readEnvMode("DEFAULT_MODE", "public"),
     arcgisTimeoutMs: Math.max(arcgisTimeoutMs, 500),
     arcgisCacheTtlMs: Math.max(arcgisCacheTtlMs, 0),
+    arcgisMetadataCacheTtlMs: Math.max(arcgisMetadataCacheTtlMs, 0),
     reportOutputDir: process.env.REPORT_OUTPUT_DIR ?? "outputs",
     allowedHost,
     maxSearchRadiusMeters: Math.max(100, maxSearchRadiusMeters),

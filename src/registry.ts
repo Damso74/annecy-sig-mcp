@@ -1,4 +1,32 @@
 import type { SemanticMappingKey } from "./utils/semanticMappings.js";
+import { LAYER_FIELDS_OVERRIDES } from "./registry.fields.generated.js";
+
+/**
+ * Résolution d'une paire (publicFields, internalFields) pour une couche donnée :
+ *
+ * - si une override `LAYER_FIELDS_OVERRIDES[serviceKey][layerId]` existe (générée
+ *   par `scripts/sync-registry-from-arcgis.ts`), elle est utilisée telle quelle ;
+ * - sinon, on retombe sur les listes génériques `genericPublic` / `genericInternalExtra`
+ *   (rétrocompatibilité — utile au démarrage / dans les tests offline).
+ */
+function resolveFields(
+  serviceKey: string,
+  layerId: number,
+  genericPublic: readonly string[],
+  genericInternalExtra: readonly string[],
+): { publicFields: string[]; internalFields: string[] } {
+  const o = LAYER_FIELDS_OVERRIDES[serviceKey]?.[layerId];
+  if (o) {
+    return {
+      publicFields: [...o.publicFields],
+      internalFields: [...o.publicFields, ...o.internalExtraFields],
+    };
+  }
+  return {
+    publicFields: [...genericPublic],
+    internalFields: [...genericPublic, ...genericInternalExtra],
+  };
+}
 
 export type VisibilityMode = "public" | "internal";
 export type RiskLevel = "green" | "orange" | "red";
@@ -107,21 +135,24 @@ const EQUIP_PATH = "FLUX_SITE_INTERNET/EQUIPEMENTS/MapServer";
 const MOBIL_PATH = "FLUX_SITE_INTERNET/MOBILITE/MapServer";
 const TRVX_PATH = "FLUX_SITE_INTERNET/TRAVAUX/MapServer";
 
-const EQUIP_PUBLIC_FIELDS = [
+export const EQUIP_PUBLIC_FIELDS = [
   "objectid",
   "denomination",
+  "nom",
+  "statut",
   "ouvert",
   "adresse",
   "commune",
   "pmr",
   "horaire",
+  "horaires",
   "telephone",
   "categorie",
   "sous_categorie",
   "accessibilite",
 ] as const;
 
-const EQUIP_INTERNAL_EXTRA = ["globalid"] as const;
+export const EQUIP_INTERNAL_EXTRA = ["globalid"] as const;
 
 const SEM_POI_STANDARD: SemanticMappings = {
   labelField: "denomination",
@@ -169,6 +200,7 @@ function equipLayer(
     >
   >,
 ): LayerRegistryEntry {
+  const fields = resolveFields("equipements", id, EQUIP_PUBLIC_FIELDS, EQUIP_INTERNAL_EXTRA);
   return {
     serviceKey: "equipements",
     servicePath: EQUIP_PATH,
@@ -177,8 +209,8 @@ function equipLayer(
     geometryType: opts.geometryType ?? "esriGeometryPoint",
     visibility: "public",
     riskLevel: opts.riskLevel ?? "green",
-    publicFields: [...EQUIP_PUBLIC_FIELDS],
-    internalFields: [...EQUIP_PUBLIC_FIELDS, ...EQUIP_INTERNAL_EXTRA],
+    publicFields: fields.publicFields,
+    internalFields: fields.internalFields,
     description: opts.description ?? `Couche équipements : ${name}.`,
     useCases:
       opts.useCases ?? [
@@ -190,16 +222,20 @@ function equipLayer(
   };
 }
 
-const MOBIL_PUBLIC_FIELDS = [
+export const MOBIL_PUBLIC_FIELDS = [
   "objectid",
   "denomination",
   "nom",
+  "titre",
+  "site",
   "adresse",
   "commune",
   "categorie",
   "sous_categorie",
   "description",
   "capacite",
+  "nb_place",
+  "nb_borne",
   "observations",
   "statut",
   "type_stationnement",
@@ -207,7 +243,7 @@ const MOBIL_PUBLIC_FIELDS = [
   "numero",
 ] as const;
 
-const MOBIL_INTERNAL_EXTRA = ["globalid", "identifiant"] as const;
+export const MOBIL_INTERNAL_EXTRA = ["globalid", "identifiant"] as const;
 
 const SEM_MOBIL_STANDARD: SemanticMappings = {
   labelField: "denomination",
@@ -237,6 +273,7 @@ function mobilLayer(
     >
   >,
 ): LayerRegistryEntry {
+  const fields = resolveFields("mobilite", id, MOBIL_PUBLIC_FIELDS, MOBIL_INTERNAL_EXTRA);
   return {
     serviceKey: "mobilite",
     servicePath: MOBIL_PATH,
@@ -245,8 +282,8 @@ function mobilLayer(
     geometryType: extra?.geometryType ?? "esriGeometryPoint",
     visibility,
     riskLevel: risk,
-    publicFields: [...MOBIL_PUBLIC_FIELDS],
-    internalFields: [...MOBIL_PUBLIC_FIELDS, ...MOBIL_INTERNAL_EXTRA],
+    publicFields: fields.publicFields,
+    internalFields: fields.internalFields,
     description: extra?.description ?? `Couche mobilité / stationnement : ${name}.`,
     useCases: extra?.useCases ?? ["Stationnement, vélos, bornes, zones réglementées."],
     semanticMappings: extra?.semanticMappings,
@@ -354,6 +391,23 @@ const PROFILE_TRAVAUX: LayerUsageProfiles = {
     ],
   },
 };
+
+/** Champs travaux/3 (couche internal-only) — exposés pour le sync registre. */
+export const TRAVAUX_INTERNAL_FIELDS = [
+  "objectid",
+  "ac_odp_ref",
+  "ac_num",
+  "ac_date_debut",
+  "ac_date_fin",
+  "controle_resultat",
+  "titre",
+  "adresse",
+  "commune_deleguee",
+  "description",
+  "url_pj",
+] as const;
+
+const travauxResolved = resolveFields("travaux", 3, [], TRAVAUX_INTERNAL_FIELDS);
 
 export const LAYER_REGISTRY: LayerRegistryEntry[] = [
   equipLayer(0, "Administration", {
@@ -502,20 +556,8 @@ export const LAYER_REGISTRY: LayerRegistryEntry[] = [
     geometryType: "esriGeometryPolygon",
     visibility: "internal",
     riskLevel: "orange",
-    publicFields: [],
-    internalFields: [
-      "objectid",
-      "ac_odp_ref",
-      "ac_num",
-      "ac_date_debut",
-      "ac_date_fin",
-      "controle_resultat",
-      "titre",
-      "adresse",
-      "commune_deleguee",
-      "description",
-      "url_pj",
-    ],
+    publicFields: travauxResolved.publicFields,
+    internalFields: travauxResolved.internalFields,
     aliases: {
       ac_num: "numero_arrete",
       ac_date_debut: "date_debut_iso",

@@ -47,14 +47,27 @@ jobs:
       - name: Typecheck Vercel API handlers (api/)
         run: npm run typecheck:api
 
-      - name: Vitest (tests offline uniquement)
-        run: npx vitest run
+      - name: Vitest avec coverage (seuils dans vitest.config.ts)
+        run: npm run test:coverage
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: annecy-sig-mcp/coverage/
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Generate JSON Schemas
         run: npm run schemas
 
       - name: Verify versioned JSON Schemas are up to date
         run: npm run schemas:check
+
+      - name: Audit npm (production deps, niveau high+)
+        run: npm run audit:check
+        continue-on-error: true
 
       - name: Smoke test MCP (stdio, hors réseau)
         # Démarre le serveur compilé, vérifie la liste des outils MCP attendus

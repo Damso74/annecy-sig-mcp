@@ -1,6 +1,8 @@
 import type { AppConfig } from "../config.js";
 import { getLayerEntry } from "../registry.js";
-import { queryLayerRequest } from "../arcgis/client.js";
+import { getLayerMetadata, queryLayerRequest } from "../arcgis/client.js";
+import { resolveArcgisOutFields } from "../utils/arcgisFieldValidation.js";
+import { withToolTracing } from "../runtime/logger.js";
 import { AppError } from "../utils/errors.js";
 import { assertSafeWhere, parseLimit, validateServiceLayer } from "../utils/validation.js";
 import { geometryIsNullOrEmpty } from "../utils/geometry.js";
@@ -57,6 +59,15 @@ export async function runListCurrentWorks(
   cfg: AppConfig,
   input: { date?: string; includeGeometry?: boolean; limit?: number },
 ) {
+  return withToolTracing("list_current_works", { mode: "internal" }, () =>
+    runListCurrentWorksInner(cfg, input),
+  );
+}
+
+async function runListCurrentWorksInner(
+  cfg: AppConfig,
+  input: { date?: string; includeGeometry?: boolean; limit?: number },
+) {
   const mode = "internal" as const;
   validateServiceLayer(TRAVAUX_SERVICE, TRAVAUX_LAYER, mode);
   const entry = getLayerEntry(TRAVAUX_SERVICE, TRAVAUX_LAYER)!;
@@ -66,13 +77,19 @@ export async function runListCurrentWorks(
   const limit = parseLimit(input.limit ?? cfg.defaultResultLimit, cfg.defaultResultLimit, cfg.maxResultLimit);
   const returnGeometry = input.includeGeometry !== false;
 
+  const requestedFields = [...new Set([...entry.publicFields, ...entry.internalFields])];
+  const meta = await getLayerMetadata(TRAVAUX_SERVICE, cfg, entry.servicePath, TRAVAUX_LAYER);
+  const { arcgisFieldNames, missingRegistryFields } = resolveArcgisOutFields(requestedFields, meta);
+  const outFields =
+    arcgisFieldNames.length > 0 ? arcgisFieldNames.join(",") : requestedFields.join(",") || "*";
+
   const parsed = await queryLayerRequest(
     {
       serviceKey: TRAVAUX_SERVICE,
       layerId: TRAVAUX_LAYER,
       servicePath: entry.servicePath,
       where,
-      outFields: [...new Set([...entry.publicFields, ...entry.internalFields])].join(",") || "*",
+      outFields,
       returnGeometry,
       outSR: 4326,
       limit,
@@ -81,6 +98,13 @@ export async function runListCurrentWorks(
   );
 
   const warnings = new Set<string>();
+  if (missingRegistryFields.length) {
+    const sample = missingRegistryFields.slice(0, 12).join(", ");
+    const more = missingRegistryFields.length > 12 ? "…" : "";
+    warnings.add(
+      `Champs registre absents sur la couche ArcGIS (non inclus dans outFields) : ${sample}${more}`,
+    );
+  }
   if (parsed.formatUsed === "json") warnings.add("Réponse Esri JSON (pas GeoJSON).");
   const rows = parsed.features.map(f => normalizeTravauxFeature(f.properties, f.geometry, true));
 
@@ -97,6 +121,15 @@ export async function runListLateWorks(
   cfg: AppConfig,
   input: { limit?: number; includeGeometry?: boolean },
 ) {
+  return withToolTracing("list_late_works", { mode: "internal" }, () =>
+    runListLateWorksInner(cfg, input),
+  );
+}
+
+async function runListLateWorksInner(
+  cfg: AppConfig,
+  input: { limit?: number; includeGeometry?: boolean },
+) {
   const mode = "internal" as const;
   validateServiceLayer(TRAVAUX_SERVICE, TRAVAUX_LAYER, mode);
   const entry = getLayerEntry(TRAVAUX_SERVICE, TRAVAUX_LAYER)!;
@@ -105,13 +138,19 @@ export async function runListLateWorks(
   const limit = parseLimit(input.limit ?? cfg.defaultResultLimit, cfg.defaultResultLimit, cfg.maxResultLimit);
   const returnGeometry = input.includeGeometry !== false;
 
+  const requestedFields = [...new Set([...entry.publicFields, ...entry.internalFields])];
+  const meta = await getLayerMetadata(TRAVAUX_SERVICE, cfg, entry.servicePath, TRAVAUX_LAYER);
+  const { arcgisFieldNames, missingRegistryFields } = resolveArcgisOutFields(requestedFields, meta);
+  const outFields =
+    arcgisFieldNames.length > 0 ? arcgisFieldNames.join(",") : requestedFields.join(",") || "*";
+
   const parsed = await queryLayerRequest(
     {
       serviceKey: TRAVAUX_SERVICE,
       layerId: TRAVAUX_LAYER,
       servicePath: entry.servicePath,
       where,
-      outFields: [...new Set([...entry.publicFields, ...entry.internalFields])].join(","),
+      outFields,
       returnGeometry,
       outSR: 4326,
       limit,
@@ -120,6 +159,13 @@ export async function runListLateWorks(
   );
 
   const warnings: string[] = [];
+  if (missingRegistryFields.length) {
+    const sample = missingRegistryFields.slice(0, 12).join(", ");
+    const more = missingRegistryFields.length > 12 ? "…" : "";
+    warnings.push(
+      `Champs registre absents sur la couche ArcGIS (non inclus dans outFields) : ${sample}${more}`,
+    );
+  }
   const rows = parsed.features.map(f => normalizeTravauxFeature(f.properties, f.geometry, true));
 
   return {

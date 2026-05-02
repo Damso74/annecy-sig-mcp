@@ -36,6 +36,8 @@ const REQUIRED_TOOLS = [
   // V1.0 — vue travaux **public-light**, exposée localement aussi.
   "list_public_works",
   "search_public_works_nearby",
+  // V1.1 — outil de découverte d'intention citoyenne (offline déterministe).
+  "recommend_layers_for_intent",
 ] as const;
 
 type SmokeOutcome = {

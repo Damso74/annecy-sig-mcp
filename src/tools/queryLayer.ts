@@ -15,6 +15,9 @@ import {
 } from "../utils/validation.js";
 import { sanitizePublicProperties, stripDangerousKeys } from "../utils/sanitize.js";
 import { lowerPropertyKeys } from "../utils/properties.js";
+import { getLayerMetadata } from "../arcgis/client.js";
+import { resolveArcgisOutFields } from "../utils/arcgisFieldValidation.js";
+import { withToolTracing } from "../runtime/logger.js";
 
 function pickId(props: Record<string, unknown>): number | string | null {
   const v = props.objectid ?? props.OBJECTID;
@@ -51,6 +54,7 @@ export function normalizeEquipementFeatureStable(
   const id = pickId(p);
   const name =
     (p.denomination as string) ||
+    (p.nom as string) ||
     (p.titre as string) ||
     (id !== null ? `${layerName} #${id}` : layerName);
   const raw = cleanProps(props, entry, mode);
@@ -63,7 +67,7 @@ export function normalizeEquipementFeatureStable(
     subCategory: p.sous_categorie ?? null,
     open: p.ouvert ?? null,
     pmr: p.pmr ?? null,
-    hours: p.horaire ?? null,
+    hours: p.horaire ?? p.horaires ?? null,
     phone: p.telephone ?? null,
     accessibility: p.accessibilite ?? null,
     geometry,
@@ -84,6 +88,7 @@ export function normalizeMobiliteFeature(
     (p.denomination as string) ||
     (p.nom as string) ||
     (p.titre as string) ||
+    (p.site as string) ||
     (id !== null ? `Mobilité #${id}` : "Mobilité");
   return {
     id,
@@ -183,6 +188,26 @@ export async function runQueryLayer(
     mode: VisibilityMode;
   },
 ) {
+  return withToolTracing(
+    "query_layer",
+    { serviceKey: input.serviceKey, layerId: input.layerId, mode: input.mode },
+    () => runQueryLayerInner(cfg, input),
+  );
+}
+
+async function runQueryLayerInner(
+  cfg: AppConfig,
+  input: {
+    serviceKey: string;
+    layerId: number;
+    where?: string;
+    outFields?: string[];
+    limit?: number;
+    offset?: number;
+    returnGeometry?: boolean;
+    mode: VisibilityMode;
+  },
+) {
   const where = (input.where ?? "1=1").trim();
   assertSafeWhere(where);
   validateServiceLayer(input.serviceKey, input.layerId, input.mode);
@@ -192,7 +217,19 @@ export async function runQueryLayer(
   const returnGeometry = input.returnGeometry !== false;
   const allowed = getEffectiveFields(entry, input.mode);
   const outFieldsList = validateOutFields(input.outFields, allowed);
-  const outFields = outFieldsList?.length ? outFieldsList.join(",") : [...allowed].join(",");
+  const requestedList = outFieldsList?.length ? outFieldsList : [...allowed];
+
+  const warnings: string[] = [];
+  const meta = await getLayerMetadata(input.serviceKey, cfg, entry.servicePath, input.layerId);
+  const { arcgisFieldNames, missingRegistryFields } = resolveArcgisOutFields(requestedList, meta);
+  if (missingRegistryFields.length) {
+    const sample = missingRegistryFields.slice(0, 12).join(", ");
+    const more = missingRegistryFields.length > 12 ? "…" : "";
+    warnings.push(
+      `Champs du registre absents sur la couche ArcGIS (non inclus dans outFields) : ${sample}${more}`,
+    );
+  }
+  const outFields = arcgisFieldNames.join(",");
 
   const parsed = await queryLayerRequest(
     {
@@ -209,7 +246,6 @@ export async function runQueryLayer(
     cfg,
   );
 
-  const warnings: string[] = [];
   if (parsed.rawExceeded) warnings.push("La limite de transfert ArcGIS peut avoir été atteinte.");
   if (parsed.formatUsed === "json") {
     warnings.push("GeoJSON indisponible ou incomplet : réponse Esri JSON normalisée côté serveur.");
@@ -251,12 +287,44 @@ export async function runSearchNearby(
     mode: VisibilityMode;
   },
 ) {
+  return withToolTracing(
+    "search_nearby",
+    { serviceKey: input.serviceKey, layerId: input.layerId, mode: input.mode },
+    () => runSearchNearbyInner(cfg, input),
+  );
+}
+
+async function runSearchNearbyInner(
+  cfg: AppConfig,
+  input: {
+    serviceKey: string;
+    layerId: number;
+    lat: number;
+    lon: number;
+    radiusMeters: number;
+    where?: string;
+    limit?: number;
+    mode: VisibilityMode;
+  },
+) {
   const where = (input.where ?? "1=1").trim();
   assertSafeWhere(where);
   validateServiceLayer(input.serviceKey, input.layerId, input.mode);
   const entry = getLayerEntry(input.serviceKey, input.layerId)!;
   const poolLimit = Math.min(cfg.maxResultLimit, Math.max(input.limit ?? cfg.defaultResultLimit, 500));
-  const outFields = [...getEffectiveFields(entry, input.mode)].join(",");
+  const requestedList = [...getEffectiveFields(entry, input.mode)];
+  const meta = await getLayerMetadata(input.serviceKey, cfg, entry.servicePath, input.layerId);
+  const { arcgisFieldNames, missingRegistryFields } = resolveArcgisOutFields(requestedList, meta);
+  const outFields = arcgisFieldNames.join(",");
+
+  const warnings: string[] = [];
+  if (missingRegistryFields.length) {
+    const sample = missingRegistryFields.slice(0, 12).join(", ");
+    const more = missingRegistryFields.length > 12 ? "…" : "";
+    warnings.push(
+      `Champs du registre absents sur la couche ArcGIS (non inclus dans outFields) : ${sample}${more}`,
+    );
+  }
 
   let spatialServerFilterUsed = true;
   let fallbackReason: string | undefined;
@@ -299,7 +367,6 @@ export async function runSearchNearby(
     );
   }
 
-  const warnings: string[] = [];
   if (spatialServerFilterUsed) {
     warnings.push("Filtre spatial serveur ArcGIS appliqué avant le tri Haversine local.");
   } else {

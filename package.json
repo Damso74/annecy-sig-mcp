@@ -11,10 +11,14 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "audit:check": "npm audit --omit=dev --audit-level=high",
     "schemas": "tsx src/contracts/exportJsonSchemas.ts",
     "schemas:check": "tsx src/contracts/checkJsonSchemas.ts",
     "smoke:mcp": "tsx scripts/smoke-mcp.ts",
-    "smoke:http": "tsx scripts/smoke-http.ts"
+    "smoke:http": "tsx scripts/smoke-http.ts",
+    "sync:registry": "tsx scripts/sync-registry-from-arcgis.ts",
+    "check:registry": "tsx scripts/sync-registry-from-arcgis.ts --check"
   },
   "engines": {
     "node": ">=20"
@@ -32,6 +36,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
+    "@vitest/coverage-v8": "^3.2.4",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^3.0.5",

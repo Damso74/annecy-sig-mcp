@@ -38,9 +38,11 @@ const REQUIRED_PUBLIC_TOOLS = [
   "generate_open_data_brief",
   "generate_chatbot_readiness_report",
   "generate_layer_action_plan",
-  // V1.0 — vue travaux **public-light** : 15 outils publics au total.
+  // V1.0 — vue travaux **public-light**.
   "list_public_works",
   "search_public_works_nearby",
+  // V1.1 — découverte d'intention citoyenne (offline) : 16 outils publics au total.
+  "recommend_layers_for_intent",
 ] as const;
 
 const FORBIDDEN_INTERNAL_TOOLS = [
@@ -295,7 +297,7 @@ async function main(): Promise<void> {
       leaked.length === 0 ? "OK" : `fuite : ${leaked.join(", ")}`,
     );
     record(
-      "tools/list expose exactement le périmètre attendu (15 outils)",
+      `tools/list expose exactement le périmètre attendu (${REQUIRED_PUBLIC_TOOLS.length} outils)`,
       tools.length === REQUIRED_PUBLIC_TOOLS.length,
       `attendu ${REQUIRED_PUBLIC_TOOLS.length}, reçu ${tools.length}`,
     );

@@ -28,6 +28,11 @@ import { assertConfigLimits } from "../utils/validation.js";
 import { createAnnecySigMcpServer } from "../server.js";
 import { checkBearer } from "./httpAuth.js";
 import { SERVER_VERSION } from "./version.js";
+import { getArcgisHttpStats } from "../arcgis/httpClient.js";
+import { getLoggerStats } from "./logger.js";
+
+/** Timestamp d'instanciation du module — sert d'uptime baseline. */
+const HEALTH_BOOTED_AT = Date.now();
 
 export interface HttpHandlerOptions {
   /** Config explicite (utile pour tests). Sinon `loadConfig()` à chaque appel. */
@@ -49,6 +54,8 @@ export const REMOTE_PUBLIC_TOOLS = [
   "detect_data_quality_issues",
   "inventory_all_layers",
   "recommend_open_data_candidates",
+  // V1.1 — découverte par intention citoyenne (matching lexical déterministe).
+  "recommend_layers_for_intent",
   "generate_inventory_report",
   "generate_open_data_brief",
   "generate_chatbot_readiness_report",
@@ -203,6 +210,8 @@ export function handleHttpHealthRequest(
     cfgError = e instanceof Error ? e.message : String(e);
   }
 
+  const httpStats = getArcgisHttpStats();
+  const loggerStats = getLoggerStats();
   const body = {
     status: cfgError ? "error" : "ok",
     server: "annecy-sig-mcp",
@@ -212,6 +221,11 @@ export function handleHttpHealthRequest(
     publicOnly,
     internalToolsAllowed,
     bearerRequired,
+    uptimeMs: Date.now() - HEALTH_BOOTED_AT,
+    runtime: {
+      arcgis: httpStats,
+      tools: loggerStats,
+    },
     ...(cfgError ? { error: cfgError } : {}),
   };
 

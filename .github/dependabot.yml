@@ -1,0 +1,44 @@
+version: 2
+
+# Dependabot — surveillance des dépendances npm et GitHub Actions.
+# Mises à jour groupées chaque semaine pour limiter le bruit de PR.
+
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    labels:
+      - dependencies
+      - npm
+    groups:
+      runtime:
+        applies-to: version-updates
+        dependency-type: production
+        update-types: [minor, patch]
+      tooling:
+        applies-to: version-updates
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # `@modelcontextprotocol/sdk` : laisser les majors en review manuelle
+      # (ABI sensible, transports peuvent breaking-change).
+      - dependency-name: "@modelcontextprotocol/sdk"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:30"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - github-actions

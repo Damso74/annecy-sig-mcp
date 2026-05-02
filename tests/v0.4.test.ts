@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { validateRegistryFieldsAgainstArcGIS } from "../src/utils/arcgisFieldValidation.js";
+import {
+  validateRegistryFieldsAgainstArcGIS,
+  resolveArcgisOutFields,
+} from "../src/utils/arcgisFieldValidation.js";
 import type { EsriLayerMetadata } from "../src/arcgis/types.js";
 import { classifyOpenDataTier } from "../src/tools/recommendOpenData.js";
 import { assessChatbotReadiness } from "../src/tools/generateChatbotReadinessReport.js";
@@ -22,6 +25,37 @@ describe("validateRegistryFieldsAgainstArcGIS", () => {
     expect(v.missingFields).toEqual(["fantome"]);
     expect(v.objectIdField).toBe("OBJECTID");
     expect(v.supportsQuery).toBe(true);
+  });
+
+  it("resolveArcgisOutFields retire les champs absents et préserve la casse ArcGIS", () => {
+    const meta: EsriLayerMetadata = {
+      fields: [
+        { name: "OBJECTID", type: "esriFieldTypeOID" },
+        { name: "site", type: "esriFieldTypeString" },
+        { name: "titre", type: "esriFieldTypeString" },
+      ],
+      objectIdField: "OBJECTID",
+      geometryType: "esriGeometryPoint",
+      capabilities: "Map,Query",
+    };
+    const r = resolveArcgisOutFields(["objectid", "denomination", "nom", "site"], meta);
+    expect(r.missingRegistryFields).toEqual(["denomination", "nom"]);
+    expect(r.arcgisFieldNames).toEqual(["OBJECTID", "site"]);
+  });
+
+  it("resolveArcgisOutFields préfixe OBJECTID si absent de la demande mais présent sur la couche", () => {
+    const meta: EsriLayerMetadata = {
+      fields: [
+        { name: "OBJECTID", type: "esriFieldTypeOID" },
+        { name: "adresse", type: "esriFieldTypeString" },
+      ],
+      objectIdField: "OBJECTID",
+      geometryType: "esriGeometryPoint",
+      capabilities: "Map,Query",
+    };
+    const r = resolveArcgisOutFields(["adresse"], meta);
+    expect(r.arcgisFieldNames).toEqual(["OBJECTID", "adresse"]);
+    expect(r.missingRegistryFields).toEqual([]);
   });
 });
 

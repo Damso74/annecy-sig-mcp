@@ -27,9 +27,48 @@ type CacheEntry = {
 
 const networkCache = new Map<string, CacheEntry>();
 
+let cacheHits = 0;
+let cacheMisses = 0;
+let lastArcgisErrorAt: number | null = null;
+let lastArcgisErrorMessage: string | null = null;
+
 /** Vide le cache GET ArcGIS (utile en test ou en cas de rotation manuelle). */
 export function clearArcgisHttpCache(): void {
   networkCache.clear();
+}
+
+/** Statistiques runtime du cache HTTP ArcGIS (exposées par `/api/health`). */
+export function getArcgisHttpStats(): {
+  cacheHits: number;
+  cacheMisses: number;
+  cacheSize: number;
+  lastArcgisErrorAt: string | null;
+  lastArcgisErrorMessage: string | null;
+} {
+  return {
+    cacheHits,
+    cacheMisses,
+    cacheSize: networkCache.size,
+    lastArcgisErrorAt: lastArcgisErrorAt ? new Date(lastArcgisErrorAt).toISOString() : null,
+    lastArcgisErrorMessage,
+  };
+}
+
+/** Réinitialise les compteurs (test). */
+export function resetArcgisHttpStats(): void {
+  cacheHits = 0;
+  cacheMisses = 0;
+  lastArcgisErrorAt = null;
+  lastArcgisErrorMessage = null;
+}
+
+/**
+ * Heuristique : une URL `?f=pjson` (sans `/query`) est une métadonnée de couche
+ * → bénéficie d'un TTL long (`arcgisMetadataCacheTtlMs`). Sinon TTL standard.
+ */
+function ttlFor(url: string, cfg: AppConfig): number {
+  const isMeta = !url.includes("/query") && url.includes("f=pjson");
+  return isMeta ? cfg.arcgisMetadataCacheTtlMs : cfg.arcgisCacheTtlMs;
 }
 
 export const networkArcgisHttpClient: ArcgisHttpClient = {
@@ -38,8 +77,10 @@ export const networkArcgisHttpClient: ArcgisHttpClient = {
     const now = Date.now();
     const cached = networkCache.get(url);
     if (cached && cached.expiresAt > now) {
+      cacheHits++;
       return cached.value;
     }
+    cacheMisses++;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), cfg.arcgisTimeoutMs);
@@ -48,15 +89,21 @@ export const networkArcgisHttpClient: ArcgisHttpClient = {
       res = await fetch(url, { method: "GET", redirect: "manual", signal: controller.signal });
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
+        lastArcgisErrorAt = Date.now();
+        lastArcgisErrorMessage = "timeout";
         throw new AppError("ARCGIS_ERROR", `Timeout ArcGIS après ${cfg.arcgisTimeoutMs} ms.`, {
           hint: "Réduire le volume demandé ou augmenter ARCGIS_TIMEOUT_MS.",
         });
       }
+      lastArcgisErrorAt = Date.now();
+      lastArcgisErrorMessage = e instanceof Error ? e.message : String(e);
       throw e;
     } finally {
       clearTimeout(timeout);
     }
     if (!res.ok) {
+      lastArcgisErrorAt = Date.now();
+      lastArcgisErrorMessage = `HTTP ${res.status}`;
       throw new AppError("ARCGIS_ERROR", `ArcGIS HTTP ${res.status} sur ${url.split("?")[0]}`, {
         details: { status: res.status },
         hint: "Vérifier la disponibilité du portail SIG.",
@@ -65,11 +112,14 @@ export const networkArcgisHttpClient: ArcgisHttpClient = {
     const text = await res.text();
     try {
       const parsed = JSON.parse(text) as unknown;
-      if (cfg.arcgisCacheTtlMs > 0) {
-        networkCache.set(url, { expiresAt: now + cfg.arcgisCacheTtlMs, value: parsed });
+      const ttl = ttlFor(url, cfg);
+      if (ttl > 0) {
+        networkCache.set(url, { expiresAt: now + ttl, value: parsed });
       }
       return parsed;
     } catch {
+      lastArcgisErrorAt = Date.now();
+      lastArcgisErrorMessage = "non-JSON response";
       throw new AppError("ARCGIS_ERROR", "Réponse ArcGIS non JSON.", {
         details: { snippet: text.slice(0, 200) },
       });

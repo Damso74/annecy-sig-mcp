@@ -13,6 +13,7 @@ import { runDetectDataQualityIssues } from "./tools/quality.js";
 import { runCountLayer } from "./tools/countLayer.js";
 import { runInventoryAllLayers } from "./tools/inventoryAllLayers.js";
 import { runRecommendOpenDataCandidates } from "./tools/recommendOpenData.js";
+import { runRecommendLayersForIntent } from "./tools/recommendLayersForIntent.js";
 import { runGenerateInventoryReport } from "./tools/generateInventoryReport.js";
 import { runGenerateOpenDataBrief } from "./tools/generateOpenDataBrief.js";
 import { runGenerateChatbotReadinessReport } from "./tools/generateChatbotReadinessReport.js";
@@ -495,6 +496,41 @@ export function registerAnnecySigTools(
             serviceKeys: args.serviceKeys,
             targets: args.targets,
             fast: args.fast,
+          }),
+        );
+      } catch (e) {
+        return jsonErr(e);
+      }
+    },
+  );
+
+  server.registerTool(
+    "recommend_layers_for_intent",
+    {
+      description:
+        "À partir d'une intention citoyenne en français libre (ex. « où me garer en VE près de la mairie »), retourne les couches les plus pertinentes et un appel `query_layer` ou `search_nearby` prêt à l'emploi.",
+      inputSchema: {
+        intent: z.string().min(2).describe("Intention citoyenne libre."),
+        mode: modeSchema.optional(),
+        lat: z.number().optional(),
+        lon: z.number().optional(),
+        radiusMeters: z.number().optional(),
+        limit: z.number().int().optional(),
+        maxRecommendations: z.number().int().min(1).max(10).optional(),
+      },
+    },
+    async args => {
+      try {
+        const mode = resolveEffectiveMode(args.mode, cfg, options);
+        return jsonOk(
+          runRecommendLayersForIntent(cfg, {
+            intent: args.intent,
+            mode,
+            lat: args.lat,
+            lon: args.lon,
+            radiusMeters: args.radiusMeters,
+            limit: args.limit,
+            maxRecommendations: args.maxRecommendations,
           }),
         );
       } catch (e) {
