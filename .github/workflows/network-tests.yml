@@ -6,6 +6,12 @@ name: Network tests (manual)
 
 on:
   workflow_dispatch:
+  # Drift quotidien à 06:00 UTC (08:00 Paris en heure d'été) :
+  # vérifie que le schéma ArcGIS Annecy n'a pas dérivé du registre commit.
+  # En cas de drift, le job échoue → action manuelle : `npm run sync:registry`
+  # localement puis commit du fichier généré.
+  schedule:
+    - cron: '0 6 * * *'
 
 permissions:
   contents: read
