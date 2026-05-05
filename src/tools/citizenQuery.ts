@@ -43,6 +43,13 @@ const NEEDS_LOCATION_HINT =
 const OUT_OF_SCOPE_HINT =
   "Ce service expose uniquement les couches SIG publiques d'Annecy (équipements, mobilité, vue travaux citoyenne). Pour toute autre demande, consulter les canaux officiels de la Ville d'Annecy.";
 
+/**
+ * Message dédié aux refus RGPD / données nominatives / documents opposables.
+ * Réponse sobre, non technique, oriente vers les canaux officiels.
+ */
+const OUT_OF_SCOPE_PERSONAL_DATA_MESSAGE =
+  "Cette demande sort du périmètre du SIG public d'Annecy. Le service ne donne pas accès aux coordonnées personnelles, aux données internes ou aux informations nominatives d'agents. Pour une demande officielle, utilisez les canaux de contact de la Ville d'Annecy.";
+
 export interface CitizenQueryInput {
   query: string;
   lat?: number;
@@ -105,13 +112,74 @@ function hasSpatialIntent(query: string): boolean {
  * Heuristique : la question vise-t-elle l'univers travaux ?
  * On préfère router vers `list_public_works` / `search_public_works_nearby`
  * plutôt que vers la couche brute (qui n'est pas exposée en public).
+ *
+ * On n'utilise pas `\b` pour autoriser les variantes morphologiques
+ * (« travaux », « chantiers », « perturbations », « déviations » après NFD).
  */
-function isWorksIntent(query: string): boolean {
+export function isWorksIntent(query: string): boolean {
   const norm = query
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
-  return /\b(travau|chantier|voirie|deviation)\b/.test(norm);
+  return (
+    /(travau|chantier|voirie|deviation|perturbation)/.test(norm) ||
+    /(rue|route|voie)\s+(barr|ferm|coup)/.test(norm) ||
+    /(circulation\s+pertur)/.test(norm)
+  );
+}
+
+/**
+ * Heuristique : la question demande-t-elle des données hors-périmètre du SIG
+ * public (données nominatives d'agents, contact direct, RGPD, documents
+ * officiels opposables) ?
+ *
+ * Détectée AVANT tout routing couche pour éviter de retourner des résultats
+ * absurdes (ex. couche « Cimetière » en réponse à une question sur les
+ * coordonnées d'un agent municipal).
+ */
+export function isOutOfScopeIntent(query: string): boolean {
+  const norm = query
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const hasMunicipalContext =
+    /(mairie|municipa|ville d'annecy|ville annecy|commune|service|sig|voirie|technique|administratif|rh)/.test(
+      norm,
+    );
+  const hasPersonRole =
+    /(agent|employe|personnel|salarie|fonctionnaire|elu|cadre|directeur|responsable)/.test(
+      norm,
+    );
+  const hasContactField =
+    /(telephone|portable|mobile|email|mail|adresse|contact|coordonnee)/.test(norm);
+
+  // Combo « rôle municipal + champ contact » → contact d'agent (cas type
+  // « téléphone d'un agent municipal », « email d'un employé de la mairie »,
+  // « coordonnées personnelles des agents de la voirie »).
+  if (hasPersonRole && hasContactField) return true;
+  // Variante : le contexte municipal + un champ de contact direct sans le
+  // mot « agent » (ex. « téléphone du service voirie en direct »).
+  if (hasMunicipalContext && /(coordonnees personnelles?|contact direct|telephone (personnel|prive)|email personnel|adresse personnelle|adresse privee|domicile)/.test(norm)) {
+    return true;
+  }
+  // Données nominatives / RH / rémunération.
+  if (
+    /(donnees? nominatives?|donnees? personnelles?|donnees? rh|salaire|remuneration|fiche de paie|contrat de travail|ressources humaines)/.test(
+      norm,
+    )
+  ) {
+    return true;
+  }
+  // Documents officiels opposables — hors périmètre d'un SIG indicatif.
+  if (
+    /(certificat|attestation officielle|document officiel|decision administrative|arrete officiel|piece justificative)/.test(
+      norm,
+    )
+  ) {
+    return true;
+  }
+  return false;
 }
 
 interface ItemFromArcgisFeature {
@@ -172,7 +240,10 @@ async function handleWorksIntent(
     }));
     return {
       query: input.query,
-      status: items.length > 0 ? "answered" : "out_of_scope",
+      // Demande dans le périmètre (travaux) → "answered" même si 0 résultat
+      // côté API publique. "out_of_scope" est réservé aux demandes hors
+      // périmètre (RGPD, données nominatives, etc.).
+      status: "answered",
       citizenAnswer:
         items.length > 0
           ? `J'ai trouvé ${items.length} chantier(s) à proximité, vue citoyenne filtrée. ${DISCLAIMER}`
@@ -198,7 +269,9 @@ async function handleWorksIntent(
   }));
   return {
     query: input.query,
-    status: items.length > 0 ? "answered" : "out_of_scope",
+    // Idem branche géolocalisée : demande dans le périmètre, statut
+    // "answered" même quand aucun chantier n'est référencé.
+    status: "answered",
     citizenAnswer:
       items.length > 0
         ? `Voici les travaux actifs (vue citoyenne filtrée). Pour cibler un quartier précis, indiquez un lieu. ${DISCLAIMER}`
@@ -223,6 +296,21 @@ export async function runCitizenQuery(
       citizenAnswer: "Pouvez-vous reformuler la question avec un peu plus de détails ?",
       items: [],
       limitations: [],
+      source: { type: "annecy_sig_mcp_citizen_router", mode: "public" },
+    };
+  }
+
+  // Cas spécial — out_of_scope explicite (RGPD, données nominatives,
+  // documents opposables) : on bloque AVANT tout routing pour éviter
+  // les fallbacks absurdes (ex. couche « Cimetière » en réponse à une
+  // question sur les coordonnées d'un agent municipal).
+  if (isOutOfScopeIntent(trimmed)) {
+    return {
+      query: trimmed,
+      status: "out_of_scope",
+      citizenAnswer: OUT_OF_SCOPE_PERSONAL_DATA_MESSAGE,
+      items: [],
+      limitations: [NO_INVENTION_NOTE],
       source: { type: "annecy_sig_mcp_citizen_router", mode: "public" },
     };
   }
