@@ -1,6 +1,7 @@
 # Note DGS / DSI — MCP annecy-sig et complément data.gouv
 
 > **Décision proposée (synthèse)**  
+>
 > - **GO** pour utiliser le MCP annecy-sig en **diagnostic interne** (qualité, briefs, inventaires).  
 > - **GO** pour un **MVP chatbot citoyen** limité aux **WC publics**, avec règles de prudence.  
 > - **GO** pour préparer **2 à 3** jeux open data **simples** après **validation métier** (et cadrage juridique **léger** si nécessaire).  
@@ -16,24 +17,23 @@
 
 ## Décision proposée (détail)
 
-1. **Exploitation immédiate** : MCP en mode **public** pour **priorisation** et **pilotage qualité** ; **chatbot citoyen** limité au périmètre **WC publics**, avec règles de prudence (horaires / PMR **non inventés** si absents sur la réponse SIG).  
-   **data.gouv** apporte des **sources officielles complémentaires** (transport structuré, risques, adresses, référentiels nationaux) : elles **complètent** le SIG local mais **ne le substituent** pas pour la donnée d’exploitation communale.
-
+1. **Exploitation immédiate** : MCP en mode **public** pour **priorisation** et **pilotage qualité** ; **chatbot citoyen** limité au périmètre **WC publics**, avec règles de prudence (horaires / PMR **non inventés** si absents sur la réponse SIG).
+  **data.gouv** apporte des **sources officielles complémentaires** (transport structuré, risques, adresses, référentiels nationaux) : elles **complètent** le SIG local mais **ne le substituent** pas pour la donnée d’exploitation communale.
 2. **Open data** : le brief public indique **0 VERT / 26 ORANGE** — il s’agit d’une **classification prudente** automatique : **aucune** couche n’est étiquetée « publiable immédiatement » **sans** revue. Cela **n’implique pas** qu’« rien » soit publiable : **plusieurs** jeux **ORANGE** peuvent l’être **après validation métier** et, le cas échéant, **cadre juridique léger** (licence, champs, agrégation).
-
 3. **Travaux** : **internal** uniquement pour la donnée détaillée ; **do_not_publish** en **brut** ; indicateurs **agrégés** éventuels **après** revue juridique, **sans** exposition de documents joints ni de données nominatives.
-
 4. **Compte SIG authentifié (futur)** : **ne pas** brancher un LLM sur l’intégralité du SIG. Une **hypothèse V1.1** : mode **restricted**, **désactivé par défaut**, allowlist **sans wildcard**, lecture **contrôlée**, **redaction**, journaux d’audit, quotas — **sans** engagement de calendrier ni de connexion nominative tant que la DSI n’a pas validé l’architecture.
 
 ---
 
 ## Bénéfices
 
-| Levier | Bénéfice |
-|--------|----------|
-| MCP **public** | Accès **contrôlé** et **réplicable** au portail SIG (équipements, mobilité) pour inventaires, briefs open data, readiness chatbot. |
-| MCP **internal** | Tableaux de bord travaux et inventaire (**28** couches sur la mesure réalisée) sans dépendre d’exports manuels non tracés. |
-| **data.gouv** | **Catalogue national** (transport, risques, adresses, entreprises) **déjà publié** ; utile en **veille** et en **réutilisation** sans solliciter le SIG pour ces référentiels — **en complément** du SIG municipal. |
+
+| Levier           | Bénéfice                                                                                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MCP **public**   | Accès **contrôlé** et **réplicable** au portail SIG (équipements, mobilité) pour inventaires, briefs open data, readiness chatbot.                                                                                  |
+| MCP **internal** | Tableaux de bord travaux et inventaire (**28** couches sur la mesure réalisée) sans dépendre d’exports manuels non tracés.                                                                                          |
+| **data.gouv**    | **Catalogue national** (transport, risques, adresses, entreprises) **déjà publié** ; utile en **veille** et en **réutilisation** sans solliciter le SIG pour ces référentiels — **en complément** du SIG municipal. |
+
 
 ---
 
@@ -48,11 +48,13 @@
 
 ## Roadmap synthétique
 
-| Horizon | Actions |
-|---------|---------|
-| **30 j** | Valider **MVP chatbot** (WC) + glossaire réponses ; lancer **sprint mapping** mobilité (champs réels vs registre) ; cartographier **doublons** SIG ↔ jeux Ville / Grand Annecy sur data.gouv. |
-| **60 j** | **Packages open data** pour 2–3 familles ORANGE « les plus simples » après validation ; **dashboard** travaux (KPI, pas de documents joints en sortie MCP) ; rattachement **GTFS/GBFS** à l’offre info voyageurs. |
+
+| Horizon  | Actions                                                                                                                                                                                                                 |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **30 j** | Valider **MVP chatbot** (WC) + glossaire réponses ; lancer **sprint mapping** mobilité (champs réels vs registre) ; cartographier **doublons** SIG ↔ jeux Ville / Grand Annecy sur data.gouv.                           |
+| **60 j** | **Packages open data** pour 2–3 familles ORANGE « les plus simples » après validation ; **dashboard** travaux (KPI, pas de documents joints en sortie MCP) ; rattachement **GTFS/GBFS** à l’offre info voyageurs.       |
 | **90 j** | **Cadre juridique travaux** (agrégats publics éventuels) ; **spec V1.1** mode **restricted** (allowlist, audit, quotas) — **sans** connexion SIG utilisateur dans le MCP tant que la DSI n’a pas validé l’architecture. |
+
 
 ---
 

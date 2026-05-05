@@ -12,7 +12,11 @@ secrets).
 - Tests offline avec fixtures HTTP — `npx vitest run` ne fait aucun appel
 réseau par défaut.
 
-**Version : 1.0.0-rc.1** — release candidate prête pour recette terrain.
+**Version : 1.0.0** — release stable, transport HTTP public actif sur
+`https://mcp.leadalpes.fr/api/mcp`.
+
+> Pour la **DSI Annecy** : voir [`docs/README-DSI-Annecy.md`](docs/README-DSI-Annecy.md)
+> — onboarding 15 min, mode public distant ou internal local.
 
 ## 1. Installation
 
@@ -112,6 +116,7 @@ Détails et règles d’ajout d’une couche :
 | `[docs/DATA_CATALOG_PUBLIC_REMOTE.md](docs/DATA_CATALOG_PUBLIC_REMOTE.md)`                     | Catalogue des données publiques (services, couches, champs)          |
 | `[docs/RECETTE_TERRAIN.md](docs/RECETTE_TERRAIN.md)`                                           | Six prompts détaillés + check-lists                                  |
 | `[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)`                                       | Pré-vol, build/tests, smoke, recette, tag Git                        |
+| `[docs/README-DSI-Annecy.md](docs/README-DSI-Annecy.md)`                                       | Onboarding 1 page DSI Annecy : remote public ou stdio internal local |
 | `[examples/cursor-mcp-config.json](examples/cursor-mcp-config.json)`                           | Configuration MCP prête à coller (Windows + macOS/Linux)             |
 | `[examples/copilot-studio-instructions.md](examples/copilot-studio-instructions.md)`           | Modèle d’instructions Copilot Studio (assistant SIG public)          |
 | `[examples/prompts.md](examples/prompts.md)`                                                   | Catalogue de prompts copier-coller (public, internal, chatbot, …)    |
