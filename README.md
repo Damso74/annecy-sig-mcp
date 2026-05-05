@@ -1,6 +1,9 @@
 # annecy-sig-mcp
 
-> **Le SIG public d'Annecy en langage naturel, depuis n'importe quelle IA compatible MCP.**
+> **Prototype MCP open source pour interroger les données SIG publiques d'Annecy en langage naturel.**
+
+> ⚠️ **Service expérimental.** Données publiques **indicatives, non opposables**.
+> Pour toute démarche officielle, se référer aux canaux de la Ville d'Annecy.
 
 Serveur **MCP** (Model Context Protocol) en TypeScript, **lecture seule**, qui
 expose les couches ArcGIS REST du portail SIG de la Ville d'Annecy
@@ -8,10 +11,10 @@ expose les couches ArcGIS REST du portail SIG de la Ville d'Annecy
 n8n, ChatGPT MCP, agent custom…
 
 - **28 couches** allowlistées : équipements (11), mobilité (16), travaux (1 vue citoyenne)
-- **16 outils MCP publics** + 3 outils internal réservés DSI
+- **17 outils MCP publics** + 3 outils internal réservés DSI (V1.2 : ajout de `citizen_query`)
 - **Allowlist stricte** d'hôtes et de couches, sanitation systématique des champs sensibles
 - **Lecture seule absolue** : pas une seule route POST/PUT/DELETE vers ArcGIS dans ce code
-- **Production live** sur <https://mcp.leadalpes.fr> (HTTPS, Bearer, public-only)
+- **Endpoint de démonstration** sur <https://mcp.leadalpes.fr> (HTTPS, Bearer, public-only, rate-limité)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen)]()
@@ -133,8 +136,9 @@ Détail complet, modèle de menace et procédure de divulgation responsable :
 
 ## 7. Outils MCP exposés (résumé)
 
-**Public (16, exposés HTTP + stdio)** :
+**Public (17, exposés HTTP + stdio)** :
 `list_services`, `list_layers`, `describe_layer`, `recommend_layers_for_intent`,
+`citizen_query`,
 `query_layer`, `search_nearby`, `count_layer`, `detect_data_quality_issues`,
 `list_public_works`, `search_public_works_nearby`,
 `inventory_all_layers`, `recommend_open_data_candidates`,
@@ -145,6 +149,20 @@ Détail complet, modèle de menace et procédure de divulgation responsable :
 `list_current_works`, `list_late_works`, `generate_internal_dashboard_brief`.
 
 Détails des structured outputs : [`docs/TECHNICAL_CONTRACTS.md`](docs/TECHNICAL_CONTRACTS.md).
+
+### `citizen_query` (V1.2)
+
+Outil haut-niveau pour les assistants citoyens (Copilot Studio, Claude, etc.).
+Reçoit une question en français libre, choisit la couche pertinente et
+exécute l'outil sous-jacent (`search_nearby`, `list_public_works`, etc.).
+
+- Toujours en **mode public**.
+- **Jamais d'invention** d'horaires, disponibilités ou règles opposables.
+- Si la localisation manque, l'outil renvoie `status: "needs_location"` et
+  demande **un lieu** (pas un `serviceKey` / `layerId`).
+- Retourne toujours un disclaimer : *« Données indicatives issues du SIG
+  public d'Annecy, à vérifier via les canaux officiels pour une démarche
+  administrative. »*
 
 ## 8. Déploiement Vercel (transport HTTP public)
 
@@ -165,16 +183,86 @@ Variables d'environnement à configurer dans **Project → Settings → Environm
 | `REMOTE_PUBLIC_ONLY` | `true` | **Ne jamais désactiver** sur l'URL publique |
 | `REMOTE_ALLOW_INTERNAL_TOOLS` | `false` | Garde les outils travaux internal invisibles |
 | `MCP_PUBLIC_READ_TOKEN` | `openssl rand -hex 32` | Sans valeur → auth désactivée |
+| `MCP_ADMIN_TOKEN` | `openssl rand -hex 32` | Optionnel — protège `/api/health/internal`. Fallback : `MCP_PUBLIC_READ_TOKEN`. |
 | `PUBLIC_WORK_ID_SALT` | `openssl rand -hex 32` | **Obligatoire en prod** : sel SHA-256 pour ID opaque |
 | `MAX_RESULT_LIMIT` | `1000` | Plafond résultats |
 | `MAX_SEARCH_RADIUS_METERS` | `5000` | Plafond rayon `search_nearby` |
 | `ARCGIS_TIMEOUT_MS` | `10000` | Timeout ArcGIS |
 | `ARCGIS_CACHE_TTL_MS` | `300000` | Cache GET en mémoire (5 min) |
+| `MCP_REQUEST_TIMEOUT_MS` | `25000` | Timeout global d'une requête `/api/mcp` (V1.2) |
+| `MCP_HEAVY_TOOL_TIMEOUT_MS` | `20000` | Timeout des outils lourds (V1.2) |
+| `MCP_RATE_LIMIT_ENABLED` | `true` | Active le rate limiting (V1.2) |
+| `MCP_RATE_LIMIT_IP_PER_MINUTE` | `60` | Limite par IP / minute |
+| `MCP_RATE_LIMIT_GLOBAL_PER_MINUTE` | `300` | Limite globale / minute |
+| `MCP_RATE_LIMIT_HEAVY_TOOL_PER_HOUR` | `30` | Limite outils lourds / IP / heure |
+| `MCP_CORS_ALLOWED_ORIGINS` | `*` | CSV d'origines CORS — voir `.env.example` |
+| `UPSTASH_REDIS_REST_URL` | _(optionnel)_ | Active le store Upstash pour le rate limiting (sinon mémoire locale) |
+| `UPSTASH_REDIS_REST_TOKEN` | _(optionnel)_ | Token associé à Upstash REST |
 
 Aucun token portail SIG n'est requis (lecture seule).
 
-Healthcheck léger (sans appel ArcGIS) : `GET /api/health` retourne version, mode,
-uptime, stats cache et dernière erreur.
+Healthcheck **public minimal** (sans appel ArcGIS) : `GET /api/health` retourne
+seulement `status`, `serverVersion`, `mode`, `publicOnly`, `bearerRequired`.
+
+Healthcheck **internal détaillé** (uptime, stats cache, compteurs outils,
+config opérationnelle) : `GET /api/health/internal`, **protégé par Bearer**
+(`MCP_ADMIN_TOKEN`, fallback `MCP_PUBLIC_READ_TOKEN`).
+
+## 8.1 Données et responsabilité
+
+- **Source** : portail SIG d'Annecy (`portailsig.annecy.fr`), uniquement.
+- **Lecture seule** : aucune écriture ArcGIS, aucun proxy arbitraire.
+- **Données indicatives** : non opposables, non temps réel sauf flux dédié
+  documenté.
+- **Pas de décision administrative automatisée** : ce service ne remplace
+  aucun guichet, aucun arrêté, aucune réglementation.
+- **Pas d'information opposable** : pour toute démarche officielle, se
+  référer aux canaux de la Ville d'Annecy.
+
+## 8.2 Sécurité — au-delà des 8 garde-fous historiques
+
+V1.2 ajoute :
+
+- **Auth Bearer mono-token** via `MCP_PUBLIC_READ_TOKEN` (rotation centralisée
+  côté Vercel — voir `SECURITY.md`).
+- **Rate limiting** simple et configurable (par IP, global, outils lourds).
+  Backend mémoire par défaut, Upstash Redis optionnel.
+- **Logs sanitisés** sur stderr uniquement (token, Authorization, séquences
+  ressemblant à des secrets toujours redacted).
+- **Healthcheck public minimal** (pas d'uptime, pas de stats), healthcheck
+  internal protégé.
+- **Outils internal masqués** côté HTTP public. Le verrou `publicOnly`
+  refuse explicitement `mode=internal`.
+- **CORS configurable** via `MCP_CORS_ALLOWED_ORIGINS`, sans cookies.
+- **Timeouts explicites** par requête et par outil lourd.
+
+## 8.3 Rotation du token
+
+1. Régénérer une nouvelle valeur (`openssl rand -hex 32` ou
+   `node -e "console.log(crypto.randomBytes(32).toString('base64url'))"`).
+2. Mettre à jour `MCP_PUBLIC_READ_TOKEN` côté Vercel (Production).
+3. Redéployer.
+4. Mettre à jour les clients autorisés (`.cursor/mcp.json`, secrets CI, etc.).
+5. **Ne jamais partager** le token dans un document public, un chat ou une
+   issue. Tout token affiché est considéré compromis et doit être tourné.
+
+## 8.4 Prompt système recommandé pour Copilot Studio
+
+```text
+Tu es un assistant citoyen de la Ville d'Annecy.
+- Utilise `citizen_query` en priorité.
+- Ne demande JAMAIS `serviceKey`, `layerId` ou `mode` à l'usager.
+- Si la localisation manque, demande uniquement une précision de lieu
+  (adresse, quartier, point GPS).
+- Ne jamais inventer les horaires, les disponibilités temps réel ou les
+  informations réglementaires opposables.
+- Réponds en langage citoyen simple, neutre, factuel.
+- Mentionne les limites des données quand c'est pertinent
+  (« Données indicatives, non opposables, à vérifier via les canaux
+  officiels de la Ville d'Annecy »).
+- En cas de demande hors périmètre, oriente vers les canaux officiels
+  plutôt que d'inventer une réponse.
+```
 
 ## 9. Contribuer
 

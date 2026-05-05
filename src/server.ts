@@ -19,6 +19,8 @@ import { runGenerateOpenDataBrief } from "./tools/generateOpenDataBrief.js";
 import { runGenerateChatbotReadinessReport } from "./tools/generateChatbotReadinessReport.js";
 import { runGenerateInternalDashboardBrief } from "./tools/generateInternalDashboardBrief.js";
 import { runGenerateLayerActionPlan } from "./tools/generateLayerActionPlan.js";
+import { runCitizenQuery } from "./tools/citizenQuery.js";
+import { withToolTracing } from "./runtime/logger.js";
 import { SERVER_VERSION } from "./runtime/version.js";
 import {
   parseLatLon,
@@ -115,6 +117,38 @@ function resolveEffectiveMode(
 }
 
 /**
+ * Outils dont le `run*` interne enveloppe déjà l'exécution dans
+ * `withToolTracing` (cf. `tools/queryLayer.ts`, `tools/works.ts`). On évite
+ * de re-wrapper côté server.ts pour ne pas doubler les compteurs.
+ */
+const SELF_TRACED_TOOLS: ReadonlySet<string> = new Set([
+  "query_layer",
+  "search_nearby",
+  "list_current_works",
+  "list_late_works",
+]);
+
+/**
+ * Wrappe un callback d'outil MCP avec `withToolTracing` quand l'outil n'est
+ * pas déjà self-traced. Le contexte (`serviceKey`, `layerId`, `mode`,
+ * coordonnées arrondies) est extrait par `ctxFromArgs` pour rester sanitisé.
+ *
+ * Conserve le type de retour exact du callback pour rester compatible avec
+ * la signature attendue par `McpServer.registerTool`.
+ */
+function traced<TArgs, TResult>(
+  toolName: string,
+  ctxFromArgs: (args: TArgs) => { serviceKey?: string; layerId?: number; mode?: string; lat?: number; lon?: number },
+  callback: (args: TArgs) => Promise<TResult>,
+): (args: TArgs) => Promise<TResult> {
+  if (SELF_TRACED_TOOLS.has(toolName)) {
+    return callback;
+  }
+  return async (args: TArgs) =>
+    withToolTracing(toolName, ctxFromArgs(args), () => callback(args));
+}
+
+/**
  * Déclare les outils MCP sur un serveur fourni, en tenant compte des
  * contraintes du transport (stdio = tout autorisé ; HTTP public = filtres).
  *
@@ -143,14 +177,18 @@ export function registerAnnecySigTools(
         mode: modeSchema.optional().describe("public | internal (défaut depuis DEFAULT_MODE)"),
       },
     },
-    async args => {
-      try {
-        const mode = resolveEffectiveMode(args.mode, cfg, options);
-        return jsonOk(runListServices(mode));
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "list_services",
+      args => ({ mode: args.mode }),
+      async args => {
+        try {
+          const mode = resolveEffectiveMode(args.mode, cfg, options);
+          return jsonOk(runListServices(mode));
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   server.registerTool(
@@ -162,14 +200,18 @@ export function registerAnnecySigTools(
         mode: modeSchema.optional(),
       },
     },
-    async args => {
-      try {
-        const mode = resolveEffectiveMode(args.mode, cfg, options);
-        return jsonOk(runListLayers(args.serviceKey, mode));
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "list_layers",
+      args => ({ serviceKey: args.serviceKey, mode: args.mode }),
+      async args => {
+        try {
+          const mode = resolveEffectiveMode(args.mode, cfg, options);
+          return jsonOk(runListLayers(args.serviceKey, mode));
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   server.registerTool(
@@ -189,18 +231,22 @@ export function registerAnnecySigTools(
           ),
       },
     },
-    async args => {
-      try {
-        const mode = resolveEffectiveMode(args.mode, cfg, options);
-        return jsonOk(
-          await runDescribeLayer(cfg, args.serviceKey, args.layerId, mode, {
-            includeRawMetadata: args.includeRawMetadata,
-          }),
-        );
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "describe_layer",
+      args => ({ serviceKey: args.serviceKey, layerId: args.layerId, mode: args.mode }),
+      async args => {
+        try {
+          const mode = resolveEffectiveMode(args.mode, cfg, options);
+          return jsonOk(
+            await runDescribeLayer(cfg, args.serviceKey, args.layerId, mode, {
+              includeRawMetadata: args.includeRawMetadata,
+            }),
+          );
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   server.registerTool(
@@ -370,22 +416,26 @@ export function registerAnnecySigTools(
           .describe("Filtre `commune_deleguee` exact (sans wildcards, longueur ≤ 80)."),
       },
     },
-    async args => {
-      try {
-        return jsonOk(
-          await runListPublicWorks(cfg, {
-            mode: args.mode,
-            date: args.date,
-            status: args.status,
-            limit: args.limit,
-            includeGeometry: args.includeGeometry,
-            commune: args.commune,
-          }),
-        );
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "list_public_works",
+      () => ({ mode: "public", serviceKey: "travaux" }),
+      async args => {
+        try {
+          return jsonOk(
+            await runListPublicWorks(cfg, {
+              mode: args.mode,
+              date: args.date,
+              status: args.status,
+              limit: args.limit,
+              includeGeometry: args.includeGeometry,
+              commune: args.commune,
+            }),
+          );
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   server.registerTool(
@@ -408,22 +458,26 @@ export function registerAnnecySigTools(
           .describe("Inclure la géométrie GeoJSON (défaut false)."),
       },
     },
-    async args => {
-      try {
-        return jsonOk(
-          await runSearchPublicWorksNearby(cfg, {
-            latitude: args.latitude,
-            longitude: args.longitude,
-            radiusMeters: args.radiusMeters,
-            date: args.date,
-            limit: args.limit,
-            includeGeometry: args.includeGeometry,
-          }),
-        );
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "search_public_works_nearby",
+      args => ({ mode: "public", serviceKey: "travaux", lat: args.latitude, lon: args.longitude }),
+      async args => {
+        try {
+          return jsonOk(
+            await runSearchPublicWorksNearby(cfg, {
+              latitude: args.latitude,
+              longitude: args.longitude,
+              radiusMeters: args.radiusMeters,
+              date: args.date,
+              limit: args.limit,
+              includeGeometry: args.includeGeometry,
+            }),
+          );
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   server.registerTool(
@@ -438,21 +492,25 @@ export function registerAnnecySigTools(
         mode: modeSchema.optional(),
       },
     },
-    async args => {
-      try {
-        const mode = resolveEffectiveMode(args.mode, cfg, options);
-        return jsonOk(
-          await runCountLayer(cfg, {
-            serviceKey: args.serviceKey,
-            layerId: args.layerId,
-            where: args.where,
-            mode,
-          }),
-        );
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "count_layer",
+      args => ({ serviceKey: args.serviceKey, layerId: args.layerId, mode: args.mode }),
+      async args => {
+        try {
+          const mode = resolveEffectiveMode(args.mode, cfg, options);
+          return jsonOk(
+            await runCountLayer(cfg, {
+              serviceKey: args.serviceKey,
+              layerId: args.layerId,
+              where: args.where,
+              mode,
+            }),
+          );
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   server.registerTool(
@@ -485,23 +543,27 @@ export function registerAnnecySigTools(
           .describe("Mode rapide : échantillon minimal (1), comptage conservé ; fiabilité data réduite."),
       },
     },
-    async args => {
-      try {
-        const mode = resolveEffectiveMode(args.mode, cfg, options);
-        return jsonOk(
-          await runInventoryAllLayers(cfg, {
-            mode,
-            sampleLimit: args.sampleLimit,
-            concurrency: args.concurrency !== undefined ? clampInventoryConcurrency(args.concurrency) : undefined,
-            serviceKeys: args.serviceKeys,
-            targets: args.targets,
-            fast: args.fast,
-          }),
-        );
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "inventory_all_layers",
+      args => ({ mode: args.mode }),
+      async args => {
+        try {
+          const mode = resolveEffectiveMode(args.mode, cfg, options);
+          return jsonOk(
+            await runInventoryAllLayers(cfg, {
+              mode,
+              sampleLimit: args.sampleLimit,
+              concurrency: args.concurrency !== undefined ? clampInventoryConcurrency(args.concurrency) : undefined,
+              serviceKeys: args.serviceKeys,
+              targets: args.targets,
+              fast: args.fast,
+            }),
+          );
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   server.registerTool(
@@ -519,24 +581,63 @@ export function registerAnnecySigTools(
         maxRecommendations: z.number().int().min(1).max(10).optional(),
       },
     },
-    async args => {
-      try {
-        const mode = resolveEffectiveMode(args.mode, cfg, options);
-        return jsonOk(
-          runRecommendLayersForIntent(cfg, {
-            intent: args.intent,
-            mode,
-            lat: args.lat,
-            lon: args.lon,
-            radiusMeters: args.radiusMeters,
-            limit: args.limit,
-            maxRecommendations: args.maxRecommendations,
-          }),
-        );
-      } catch (e) {
-        return jsonErr(e);
-      }
+    traced(
+      "recommend_layers_for_intent",
+      args => ({ mode: args.mode, lat: args.lat, lon: args.lon }),
+      async args => {
+        try {
+          const mode = resolveEffectiveMode(args.mode, cfg, options);
+          return jsonOk(
+            runRecommendLayersForIntent(cfg, {
+              intent: args.intent,
+              mode,
+              lat: args.lat,
+              lon: args.lon,
+              radiusMeters: args.radiusMeters,
+              limit: args.limit,
+              maxRecommendations: args.maxRecommendations,
+            }),
+          );
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
+  );
+
+  // V1.2 — outil haut-niveau « citoyen ». Toujours mode public.
+  server.registerTool(
+    "citizen_query",
+    {
+      description:
+        "Outil haut-niveau citoyen. Reçoit une question en français libre et délègue automatiquement aux outils SIG pertinents (search_nearby, list_public_works, etc.). Toujours en mode public, jamais d'invention de données. Si la localisation manque, demande poliment une précision de lieu plutôt que serviceKey/layerId.",
+      inputSchema: {
+        query: z.string().min(2).describe("Question citoyenne en français libre."),
+        lat: z.number().optional().describe("Latitude WGS84 (optionnelle)."),
+        lon: z.number().optional().describe("Longitude WGS84 (optionnelle)."),
+        radiusMeters: z.number().optional().describe("Rayon en mètres si lat/lon fournis (défaut 1000, plafonné par MAX_SEARCH_RADIUS_METERS)."),
+        limit: z.number().int().optional().describe("Plafond résultats (défaut 10)."),
+      },
     },
+    traced(
+      "citizen_query",
+      args => ({ mode: "public", lat: args.lat, lon: args.lon }),
+      async args => {
+        try {
+          return jsonOk(
+            await runCitizenQuery(cfg, {
+              query: args.query,
+              lat: args.lat,
+              lon: args.lon,
+              radiusMeters: args.radiusMeters,
+              limit: args.limit,
+            }),
+          );
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   server.registerTool(
@@ -561,23 +662,27 @@ export function registerAnnecySigTools(
         fast: z.boolean().optional(),
       },
     },
-    async args => {
-      try {
-        const mode = resolveEffectiveMode(args.mode, cfg, options);
-        return jsonOk(
-          await runRecommendOpenDataCandidates(cfg, {
-            mode,
-            sampleLimit: args.sampleLimit,
-            concurrency: args.concurrency !== undefined ? clampInventoryConcurrency(args.concurrency) : undefined,
-            serviceKeys: args.serviceKeys,
-            targets: args.targets,
-            fast: args.fast,
-          }),
-        );
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "recommend_open_data_candidates",
+      args => ({ mode: args.mode }),
+      async args => {
+        try {
+          const mode = resolveEffectiveMode(args.mode, cfg, options);
+          return jsonOk(
+            await runRecommendOpenDataCandidates(cfg, {
+              mode,
+              sampleLimit: args.sampleLimit,
+              concurrency: args.concurrency !== undefined ? clampInventoryConcurrency(args.concurrency) : undefined,
+              serviceKeys: args.serviceKeys,
+              targets: args.targets,
+              fast: args.fast,
+            }),
+          );
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   const formatSchema = z.enum(["json", "markdown"]).optional();
@@ -607,25 +712,29 @@ export function registerAnnecySigTools(
         writeOutput: writeOutputSchema,
       },
     },
-    async args => {
-      try {
-        const mode = resolveEffectiveMode(args.mode, cfg, options);
-        const format = args.format === "json" ? "json" : "markdown";
-        const r = await runGenerateInventoryReport(cfg, {
-          mode,
-          sampleLimit: args.sampleLimit,
-          concurrency: args.concurrency !== undefined ? clampInventoryConcurrency(args.concurrency) : undefined,
-          serviceKeys: args.serviceKeys,
-          targets: args.targets,
-          fast: args.fast,
-          format,
-          writeOutput: args.writeOutput,
-        });
-        return jsonOk({ format: r.format, body: r.body, structured: r.structured, output: r.output });
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "generate_inventory_report",
+      args => ({ mode: args.mode }),
+      async args => {
+        try {
+          const mode = resolveEffectiveMode(args.mode, cfg, options);
+          const format = args.format === "json" ? "json" : "markdown";
+          const r = await runGenerateInventoryReport(cfg, {
+            mode,
+            sampleLimit: args.sampleLimit,
+            concurrency: args.concurrency !== undefined ? clampInventoryConcurrency(args.concurrency) : undefined,
+            serviceKeys: args.serviceKeys,
+            targets: args.targets,
+            fast: args.fast,
+            format,
+            writeOutput: args.writeOutput,
+          });
+          return jsonOk({ format: r.format, body: r.body, structured: r.structured, output: r.output });
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   server.registerTool(
@@ -653,26 +762,30 @@ export function registerAnnecySigTools(
         writeOutput: writeOutputSchema,
       },
     },
-    async args => {
-      try {
-        const mode = resolveEffectiveMode(args.mode, cfg, options);
-        const format = args.format === "json" ? "json" : "markdown";
-        const r = await runGenerateOpenDataBrief(cfg, {
-          mode,
-          travauxTier: args.travauxTier,
-          sampleLimit: args.sampleLimit,
-          concurrency: args.concurrency !== undefined ? clampInventoryConcurrency(args.concurrency) : undefined,
-          serviceKeys: args.serviceKeys,
-          targets: args.targets,
-          fast: args.fast,
-          format,
-          writeOutput: args.writeOutput,
-        });
-        return jsonOk({ format: r.format, body: r.body, structured: r.structured, output: r.output });
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "generate_open_data_brief",
+      args => ({ mode: args.mode }),
+      async args => {
+        try {
+          const mode = resolveEffectiveMode(args.mode, cfg, options);
+          const format = args.format === "json" ? "json" : "markdown";
+          const r = await runGenerateOpenDataBrief(cfg, {
+            mode,
+            travauxTier: args.travauxTier,
+            sampleLimit: args.sampleLimit,
+            concurrency: args.concurrency !== undefined ? clampInventoryConcurrency(args.concurrency) : undefined,
+            serviceKeys: args.serviceKeys,
+            targets: args.targets,
+            fast: args.fast,
+            format,
+            writeOutput: args.writeOutput,
+          });
+          return jsonOk({ format: r.format, body: r.body, structured: r.structured, output: r.output });
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   server.registerTool(
@@ -700,24 +813,28 @@ export function registerAnnecySigTools(
         writeOutput: writeOutputSchema,
       },
     },
-    async args => {
-      try {
-        const mode = resolveEffectiveMode(args.mode, cfg, options);
-        const format = args.format === "json" ? "json" : "markdown";
-        const r = await runGenerateChatbotReadinessReport(cfg, {
-          mode,
-          sampleLimit: args.sampleLimit,
-          concurrency: args.concurrency !== undefined ? clampInventoryConcurrency(args.concurrency) : undefined,
-          targets: args.targets,
-          fast: args.fast,
-          format,
-          writeOutput: args.writeOutput,
-        });
-        return jsonOk({ format: r.format, body: r.body, structured: r.structured, output: r.output });
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "generate_chatbot_readiness_report",
+      args => ({ mode: args.mode }),
+      async args => {
+        try {
+          const mode = resolveEffectiveMode(args.mode, cfg, options);
+          const format = args.format === "json" ? "json" : "markdown";
+          const r = await runGenerateChatbotReadinessReport(cfg, {
+            mode,
+            sampleLimit: args.sampleLimit,
+            concurrency: args.concurrency !== undefined ? clampInventoryConcurrency(args.concurrency) : undefined,
+            targets: args.targets,
+            fast: args.fast,
+            format,
+            writeOutput: args.writeOutput,
+          });
+          return jsonOk({ format: r.format, body: r.body, structured: r.structured, output: r.output });
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   if (options.allowInternalTools) {
@@ -733,20 +850,24 @@ export function registerAnnecySigTools(
           writeOutput: writeOutputSchema,
         },
       },
-      async args => {
-        try {
-          const format = args.format === "json" ? "json" : "markdown";
-          const r = await runGenerateInternalDashboardBrief(cfg, {
-            mode: args.mode,
-            date: args.date,
-            format,
-            writeOutput: args.writeOutput,
-          });
-          return jsonOk({ format: r.format, body: r.body, structured: r.structured, output: r.output });
-        } catch (e) {
-          return jsonErr(e);
-        }
-      },
+      traced(
+        "generate_internal_dashboard_brief",
+        () => ({ mode: "internal" }),
+        async args => {
+          try {
+            const format = args.format === "json" ? "json" : "markdown";
+            const r = await runGenerateInternalDashboardBrief(cfg, {
+              mode: args.mode,
+              date: args.date,
+              format,
+              writeOutput: args.writeOutput,
+            });
+            return jsonOk({ format: r.format, body: r.body, structured: r.structured, output: r.output });
+          } catch (e) {
+            return jsonErr(e);
+          }
+        },
+      ),
     );
   }
 
@@ -766,25 +887,29 @@ export function registerAnnecySigTools(
         writeOutput: writeOutputSchema,
       },
     },
-    async args => {
-      try {
-        const mode = resolveEffectiveMode(args.mode, cfg, options);
-        const format = args.format === "json" ? "json" : "markdown";
-        const r = await runGenerateLayerActionPlan(cfg, {
-          serviceKey: args.serviceKey,
-          layerId: args.layerId,
-          mode,
-          format,
-          sampleLimit: args.sampleLimit,
-          concurrency: args.concurrency !== undefined ? clampInventoryConcurrency(args.concurrency) : undefined,
-          fast: args.fast,
-          writeOutput: args.writeOutput,
-        });
-        return jsonOk({ format: r.format, body: r.body, structured: r.structured, output: r.output });
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "generate_layer_action_plan",
+      args => ({ serviceKey: args.serviceKey, layerId: args.layerId, mode: args.mode }),
+      async args => {
+        try {
+          const mode = resolveEffectiveMode(args.mode, cfg, options);
+          const format = args.format === "json" ? "json" : "markdown";
+          const r = await runGenerateLayerActionPlan(cfg, {
+            serviceKey: args.serviceKey,
+            layerId: args.layerId,
+            mode,
+            format,
+            sampleLimit: args.sampleLimit,
+            concurrency: args.concurrency !== undefined ? clampInventoryConcurrency(args.concurrency) : undefined,
+            fast: args.fast,
+            writeOutput: args.writeOutput,
+          });
+          return jsonOk({ format: r.format, body: r.body, structured: r.structured, output: r.output });
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 
   server.registerTool(
@@ -798,21 +923,25 @@ export function registerAnnecySigTools(
         mode: modeSchema.optional(),
       },
     },
-    async args => {
-      try {
-        const mode = resolveEffectiveMode(args.mode, cfg, options);
-        return jsonOk(
-          await runDetectDataQualityIssues(cfg, {
-            serviceKey: args.serviceKey,
-            layerId: args.layerId,
-            sampleLimit: args.sampleLimit,
-            mode,
-          }),
-        );
-      } catch (e) {
-        return jsonErr(e);
-      }
-    },
+    traced(
+      "detect_data_quality_issues",
+      args => ({ serviceKey: args.serviceKey, layerId: args.layerId, mode: args.mode }),
+      async args => {
+        try {
+          const mode = resolveEffectiveMode(args.mode, cfg, options);
+          return jsonOk(
+            await runDetectDataQualityIssues(cfg, {
+              serviceKey: args.serviceKey,
+              layerId: args.layerId,
+              sampleLimit: args.sampleLimit,
+              mode,
+            }),
+          );
+        } catch (e) {
+          return jsonErr(e);
+        }
+      },
+    ),
   );
 }
 
@@ -837,6 +966,7 @@ export function createAnnecySigMcpServer(
         "V0.7 : schéma `source` stable (schemaVersion / serverVersion, diagnostics agrégés, execution avec requestedSampleLimit / effectiveSampleLimit), diagnostics typés par couche, ciblage `targets` (exclusif avec serviceKeys), inventaire découpé en modules. " +
         "Outils d’inventaire : count_layer, inventory_all_layers, recommend_open_data_candidates. " +
         "Rapports : generate_inventory_report, generate_open_data_brief, generate_chatbot_readiness_report, generate_internal_dashboard_brief, generate_layer_action_plan. " +
+        "V1.2 : outil haut-niveau citizen_query qui choisit la couche pertinente et appelle l'outil sous-jacent (jamais d'invention, mode public uniquement). " +
         "Toujours vérifier le mode avant d’exposer des données citoyennes.",
     },
   );

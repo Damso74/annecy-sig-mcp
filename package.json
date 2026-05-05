@@ -6,6 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
@@ -17,6 +18,7 @@
     "schemas:check": "tsx src/contracts/checkJsonSchemas.ts",
     "smoke:mcp": "tsx scripts/smoke-mcp.ts",
     "smoke:http": "tsx scripts/smoke-http.ts",
+    "smoke:prod": "tsx scripts/smoke-prod.ts",
     "sync:registry": "tsx scripts/sync-registry-from-arcgis.ts",
     "check:registry": "tsx scripts/sync-registry-from-arcgis.ts --check"
   },

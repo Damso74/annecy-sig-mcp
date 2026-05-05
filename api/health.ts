@@ -1,15 +1,14 @@
 /**
- * Route Vercel `/api/health` — diagnostic léger.
+ * Route Vercel `/api/health` — diagnostic léger **public minimal**.
  *
- * Ne fait **aucun appel** vers le portail ArcGIS : on confirme uniquement que
- * le serveur est monté et que la config se charge. Surveillance externe
- * possible (Better Stack, UptimeRobot, etc.).
+ * Ne fait **aucun appel** vers le portail ArcGIS et n'expose ni uptime, ni
+ * stats cache, ni compteurs d'erreurs. Voir `/api/health/internal` pour le
+ * diagnostic complet (protégé par Bearer).
  *
  * Format : `export default { fetch(request) { … } }` (Web Standard officiel
  * des Vercel Functions Node.js). Voir api/mcp.ts pour la rationale.
  */
 
-// Import depuis `../dist/...` après build — voir api/mcp.ts pour la rationale.
 import { handleHttpHealthRequest } from "../dist/runtime/httpHandler.js";
 
 export const config = {

@@ -30,6 +30,16 @@ function readEnvOptionalString(key: string): string | undefined {
   return trimmed === "" ? undefined : trimmed;
 }
 
+function readEnvCsv(key: string): string[] | undefined {
+  const raw = readEnvOptionalString(key);
+  if (raw === undefined) return undefined;
+  if (raw === "*") return ["*"];
+  return raw
+    .split(",")
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+}
+
 export interface AppConfig {
   annecySigBaseUrl: string;
   defaultResultLimit: number;
@@ -68,6 +78,26 @@ export interface AppConfig {
      * Source unique de vérité côté serveur — jamais journalisé.
      */
     publicReadToken?: string;
+    /**
+     * Token admin facultatif protégeant `/api/health/internal`. Si absent,
+     * la route retombe sur `MCP_PUBLIC_READ_TOKEN` (compromis « simple par
+     * défaut » — voir SECURITY.md).
+     */
+    adminToken?: string;
+    /** Origines CORS autorisées. `["*"]` (défaut) → comportement historique. */
+    corsAllowedOrigins: string[];
+    /** Timeout global d'une requête `/api/mcp` (ms). */
+    requestTimeoutMs: number;
+    /** Timeout dédié aux outils lourds (ms). */
+    heavyToolTimeoutMs: number;
+    /** Active le rate limiting (défaut `true`). */
+    rateLimitEnabled: boolean;
+    /** Limite IP/minute (défaut 60). */
+    rateLimitIpPerMinute: number;
+    /** Limite globale /api/mcp/minute (défaut 300). */
+    rateLimitGlobalPerMinute: number;
+    /** Limite outils lourds par IP/heure (défaut 30). */
+    rateLimitHeavyToolPerHour: number;
   };
 }
 
@@ -94,6 +124,9 @@ export function loadConfig(): AppConfig {
   const arcgisCacheTtlMs = readEnvInt("ARCGIS_CACHE_TTL_MS", 5 * 60_000);
   const arcgisMetadataCacheTtlMs = readEnvInt("ARCGIS_METADATA_CACHE_TTL_MS", 30 * 60_000);
   const maxSearchRadiusMeters = readEnvInt("MAX_SEARCH_RADIUS_METERS", 5000);
+
+  const corsAllowedOrigins = readEnvCsv("MCP_CORS_ALLOWED_ORIGINS") ?? ["*"];
+
   return {
     annecySigBaseUrl,
     defaultResultLimit: Math.min(Math.max(defaultResultLimit, 1), maxResultLimit),
@@ -112,6 +145,14 @@ export function loadConfig(): AppConfig {
       publicOnly: readEnvBool("REMOTE_PUBLIC_ONLY", true),
       allowInternalTools: readEnvBool("REMOTE_ALLOW_INTERNAL_TOOLS", false),
       publicReadToken: readEnvOptionalString("MCP_PUBLIC_READ_TOKEN"),
+      adminToken: readEnvOptionalString("MCP_ADMIN_TOKEN"),
+      corsAllowedOrigins,
+      requestTimeoutMs: Math.max(1_000, readEnvInt("MCP_REQUEST_TIMEOUT_MS", 25_000)),
+      heavyToolTimeoutMs: Math.max(1_000, readEnvInt("MCP_HEAVY_TOOL_TIMEOUT_MS", 20_000)),
+      rateLimitEnabled: readEnvBool("MCP_RATE_LIMIT_ENABLED", true),
+      rateLimitIpPerMinute: Math.max(1, readEnvInt("MCP_RATE_LIMIT_IP_PER_MINUTE", 60)),
+      rateLimitGlobalPerMinute: Math.max(1, readEnvInt("MCP_RATE_LIMIT_GLOBAL_PER_MINUTE", 300)),
+      rateLimitHeavyToolPerHour: Math.max(1, readEnvInt("MCP_RATE_LIMIT_HEAVY_TOOL_PER_HOUR", 30)),
     },
   };
 }

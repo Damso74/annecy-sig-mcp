@@ -1,6 +1,6 @@
 /**
- * Handler HTTP MCP — utilisé par les routes Vercel `api/mcp.ts` et `api/health.ts`,
- * ainsi que par le smoke test local `scripts/smoke-http.ts`.
+ * Handler HTTP MCP — utilisé par les routes Vercel `api/mcp.ts`,
+ * `api/health.ts` et `api/health/internal.ts`, ainsi que par les smoke tests.
  *
  * Choix d'architecture :
  *
@@ -20,6 +20,15 @@
  *
  * - **Logs** : tout passe par `console.error` (stderr). On ne fuit jamais sur
  *   stdout, par cohérence avec la contrainte stdio existante.
+ *
+ * Hardening V1.2 :
+ * - rate limiting (IP/min, global/min, outils lourds/h) appliqué **avant**
+ *   l'auth pour limiter le brute-force ;
+ * - timeout global par requête (`MCP_REQUEST_TIMEOUT_MS`) avec réponse JSON-RPC
+ *   `-32030` propre ;
+ * - timeout dédié aux outils lourds (`MCP_HEAVY_TOOL_TIMEOUT_MS`) ;
+ * - CORS configurable via `MCP_CORS_ALLOWED_ORIGINS`, sans `Allow-Credentials` ;
+ * - public health minimal, internal health protégé par Bearer.
  */
 
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
@@ -27,12 +36,16 @@ import { loadConfig, type AppConfig } from "../config.js";
 import { assertConfigLimits } from "../utils/validation.js";
 import { createAnnecySigMcpServer } from "../server.js";
 import { checkBearer } from "./httpAuth.js";
-import { SERVER_VERSION } from "./version.js";
-import { getArcgisHttpStats } from "../arcgis/httpClient.js";
-import { getLoggerStats } from "./logger.js";
-
-/** Timestamp d'instanciation du module — sert d'uptime baseline. */
-const HEALTH_BOOTED_AT = Date.now();
+import {
+  buildRateLimitedResponse,
+  evaluateRateLimit,
+  getClientIp,
+  getRateLimitStore,
+  HEAVY_TOOL_NAMES,
+  redactIp,
+} from "./rateLimit.js";
+import { handleInternalHealth, handlePublicHealth } from "./httpHealth.js";
+import { logger, warnIfPublicTokenMissing } from "./logger.js";
 
 export interface HttpHandlerOptions {
   /** Config explicite (utile pour tests). Sinon `loadConfig()` à chaque appel. */
@@ -63,6 +76,8 @@ export const REMOTE_PUBLIC_TOOLS = [
   // V1.0 — vue travaux **public-light** (filtrée, jamais brute).
   "list_public_works",
   "search_public_works_nearby",
+  // V1.2 — outil haut-niveau citoyen (router vers les outils existants).
+  "citizen_query",
 ] as const;
 
 /** Outils explicitement exclus du périmètre public remote. */
@@ -80,26 +95,112 @@ function getCfg(options?: HttpHandlerOptions): AppConfig {
 }
 
 /**
- * En-têtes CORS du transport HTTP MCP — alignés sur le hardening V1.0 :
+ * En-têtes CORS du transport HTTP MCP.
  *
- * - `Access-Control-Allow-Origin: *` — Cursor / Copilot Studio appellent en
- *   serveur-à-serveur, mais on reste ouvert aux clients navigateur (pas de
- *   cookies, donc `*` est sûr) ;
- * - `Access-Control-Allow-Headers` réduit à `Authorization, Content-Type,
- *   MCP-Protocol-Version` — `mcp-session-id` est inutile en stateless ;
- * - `Access-Control-Allow-Methods` réduit à `GET, POST, OPTIONS` — pas de
- *   `DELETE` car aucune session n’est conservée côté serveur ;
- * - **Pas** de `Access-Control-Allow-Credentials: true` — les cookies sont
- *   strictement interdits sur ce transport (auth Bearer uniquement).
+ * - Si `MCP_CORS_ALLOWED_ORIGINS=*` (défaut) : `Access-Control-Allow-Origin: *`
+ *   (comportement historique, sans cookies).
+ * - Sinon, l'origine est echo-back si elle figure dans la liste, et un
+ *   `Vary: Origin` est ajouté pour ne pas casser les caches CDN.
+ *
+ * Headers acceptés : `Authorization, Content-Type, MCP-Protocol-Version`.
+ * Méthodes : `GET, POST, OPTIONS` (pas de DELETE — stateless).
+ * Pas de `Access-Control-Allow-Credentials` (auth Bearer uniquement).
  */
-function corsHeaders(): Record<string, string> {
-  return {
-    "access-control-allow-origin": "*",
+function corsHeaders(cfg: AppConfig, requestOrigin: string | null): Record<string, string> {
+  const allowed = cfg.remote.corsAllowedOrigins;
+  const base: Record<string, string> = {
     "access-control-allow-headers": "Authorization, Content-Type, MCP-Protocol-Version",
     "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-max-age": "86400",
   };
+  if (allowed.length === 1 && allowed[0] === "*") {
+    base["access-control-allow-origin"] = "*";
+    return base;
+  }
+  if (requestOrigin && allowed.includes(requestOrigin)) {
+    base["access-control-allow-origin"] = requestOrigin;
+    base["vary"] = "Origin";
+    return base;
+  }
+  // Origine non autorisée : on n'émet pas `Access-Control-Allow-Origin`. Le
+  // navigateur bloquera la requête côté client. C'est la stratégie la plus
+  // simple et la plus prudente (cf. Tâche 7).
+  base["vary"] = "Origin";
+  return base;
 }
+
+function withCorsHeaders(response: Response, cfg: AppConfig, requestOrigin: string | null): Response {
+  const headers = new Headers(response.headers);
+  for (const [k, v] of Object.entries(corsHeaders(cfg, requestOrigin))) headers.set(k, v);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+/**
+ * Détecte le `tools/call` dans le body JSON-RPC pour appliquer le rate
+ * limiting outils lourds. On clone la requête pour ne pas consommer le body.
+ */
+async function detectToolCallName(req: Request): Promise<string | undefined> {
+  if (req.method !== "POST") return undefined;
+  try {
+    const cloned = req.clone();
+    const text = await cloned.text();
+    if (!text) return undefined;
+    const parsed = JSON.parse(text) as
+      | { method?: string; params?: { name?: string } }
+      | Array<{ method?: string; params?: { name?: string } }>;
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        if (item?.method === "tools/call" && typeof item.params?.name === "string") {
+          return item.params.name;
+        }
+      }
+      return undefined;
+    }
+    if (parsed?.method === "tools/call" && typeof parsed.params?.name === "string") {
+      return parsed.params.name;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Wraps a promise with a hard timeout that resolves to a JSON-RPC `-32030`
+ * response. We do not abort the underlying transport (the SDK handles its
+ * own request lifecycle) — we simply stop waiting for it and return.
+ */
+async function withRequestTimeout(
+  promise: Promise<Response>,
+  timeoutMs: number,
+): Promise<Response> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<Response>(resolveP => {
+    timer = setTimeout(() => {
+      resolveP(
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            error: { code: -32030, message: "Request timeout" },
+            id: null,
+          }),
+          { status: 504, headers: { "content-type": "application/json" } },
+        ),
+      );
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+let bootWarningEmitted = false;
 
 /**
  * Handler MCP principal. Web standard `Request` → `Response` :
@@ -110,19 +211,56 @@ export async function handleHttpMcpRequest(
   req: Request,
   options?: HttpHandlerOptions,
 ): Promise<Response> {
+  const cfg = getCfg(options);
+  const requestOrigin = req.headers.get("origin");
+
+  // 1. Preflight CORS — jamais rate-limité, jamais authentifié.
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders() });
+    return new Response(null, { status: 204, headers: corsHeaders(cfg, requestOrigin) });
   }
 
-  const cfg = getCfg(options);
+  if (!bootWarningEmitted) {
+    bootWarningEmitted = true;
+    warnIfPublicTokenMissing({
+      bearerRequired: cfg.remote.publicReadToken !== undefined,
+      publicOnly: cfg.remote.publicOnly,
+    });
+  }
 
-  // 1. Auth Bearer optionnelle (verrouillée si MCP_PUBLIC_READ_TOKEN défini).
+  // 2. Rate limiting (avant l'auth, pour limiter le brute-force).
+  if (cfg.remote.rateLimitEnabled) {
+    const ip = getClientIp(req);
+    const toolName = await detectToolCallName(req);
+    const { store } = getRateLimitStore();
+    const decision = await evaluateRateLimit(
+      store,
+      {
+        enabled: true,
+        ipPerMinute: cfg.remote.rateLimitIpPerMinute,
+        globalPerMinute: cfg.remote.rateLimitGlobalPerMinute,
+        heavyToolPerHour: cfg.remote.rateLimitHeavyToolPerHour,
+      },
+      { ip, toolName },
+    );
+    if (!decision.ok && decision.retryAfterSeconds !== undefined) {
+      logger.warn("rate_limit.blocked", {
+        ip: redactIp(ip),
+        reason: decision.reason,
+        tool: toolName,
+        retryAfterSeconds: decision.retryAfterSeconds,
+      });
+      return withCorsHeaders(buildRateLimitedResponse(decision.retryAfterSeconds), cfg, requestOrigin);
+    }
+  }
+
+  // 3. Auth Bearer optionnelle (verrouillée si MCP_PUBLIC_READ_TOKEN défini).
   const auth = checkBearer(req, { expectedToken: cfg.remote.publicReadToken });
   if (!auth.ok && auth.response) {
-    return withCors(auth.response);
+    logger.info("auth.rejected", { reason: auth.reason });
+    return withCorsHeaders(auth.response, cfg, requestOrigin);
   }
 
-  // 2. Création éphémère du serveur MCP en mode stateless avec verrou
+  // 4. Création éphémère du serveur MCP en mode stateless avec verrou
   //    public-only + outils internal masqués selon la config.
   const server = createAnnecySigMcpServer(cfg, {
     transport: "http",
@@ -132,109 +270,101 @@ export async function handleHttpMcpRequest(
   });
 
   const transport = new WebStandardStreamableHTTPServerTransport({
-    // Mode stateless : pas de session ID renvoyé, pas d'état entre invocations.
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
   });
 
-  // Sécurité : si le client se déconnecte, on ferme proprement (n'a quasiment
-  // pas d'effet en stateless mais évite des warnings côté SDK).
   transport.onerror = err => {
-    // stderr uniquement.
-    // eslint-disable-next-line no-console
-    console.error("[mcp-http] transport error:", err.message);
+    logger.error("transport.error", { message: err.message });
   };
 
-  try {
-    await server.connect(transport);
-    const response = await transport.handleRequest(req);
-    return withCors(response);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[mcp-http] handler error:", err instanceof Error ? err.message : err);
-    return withCors(
-      new Response(
+  // 5. Détecte si l'appel cible un outil lourd pour appliquer le budget dédié.
+  const toolName = await detectToolCallName(req);
+  const isHeavy = toolName !== undefined && HEAVY_TOOL_NAMES.has(toolName);
+  const timeoutMs = isHeavy
+    ? Math.min(cfg.remote.heavyToolTimeoutMs, cfg.remote.requestTimeoutMs)
+    : cfg.remote.requestTimeoutMs;
+
+  const handlePromise = (async (): Promise<Response> => {
+    try {
+      await server.connect(transport);
+      const response = await transport.handleRequest(req);
+      return response;
+    } catch (err) {
+      logger.error("mcp.handler_error", {
+        message: err instanceof Error ? err.message : String(err),
+        tool: toolName,
+      });
+      return new Response(
         JSON.stringify({
           jsonrpc: "2.0",
-          error: {
-            code: -32603,
-            message: "Erreur interne du serveur MCP HTTP.",
-          },
+          error: { code: -32603, message: "Erreur interne du serveur MCP HTTP." },
           id: null,
         }),
         { status: 500, headers: { "content-type": "application/json" } },
-      ),
-    );
-  } finally {
-    // Best-effort cleanup. `server.close()` ferme aussi le transport rattaché.
-    try {
-      await server.close();
-    } catch {
-      // best-effort
+      );
+    } finally {
+      try {
+        await server.close();
+      } catch {
+        // best-effort
+      }
     }
-  }
-}
+  })();
 
-function withCors(response: Response): Response {
-  const headers = new Headers(response.headers);
-  for (const [k, v] of Object.entries(corsHeaders())) headers.set(k, v);
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
+  const response = await withRequestTimeout(handlePromise, timeoutMs);
+  return withCorsHeaders(response, cfg, requestOrigin);
 }
 
 /**
- * Handler `/api/health` — diagnostic léger uniquement. **Aucun appel ArcGIS** :
- * on confirme seulement que le serveur est monté et que la config se charge
- * sans exception.
+ * Handler `/api/health` — diagnostic léger, payload minimal public.
+ *
+ * Retourne uniquement `status`, `server`, `transport`, `serverVersion`,
+ * `mode`, `publicOnly`, `bearerRequired`. Pas d'uptime, pas de stats — voir
+ * `handleInternalHealthRequest` pour le diagnostic complet.
  */
 export function handleHttpHealthRequest(
-  _req: Request,
+  req: Request,
   options?: HttpHandlerOptions,
 ): Response {
-  let cfgError: string | undefined;
-  let mode: "public" | "internal" = "public";
-  let publicOnly = true;
-  let internalToolsAllowed = false;
-  let bearerRequired = false;
-
+  const requestOrigin = req.headers.get("origin");
+  let cfg: AppConfig | undefined;
   try {
-    const cfg = getCfg(options);
-    mode = cfg.remote.publicOnly ? "public" : cfg.defaultMode;
-    publicOnly = cfg.remote.publicOnly;
-    internalToolsAllowed = cfg.remote.allowInternalTools;
-    bearerRequired = cfg.remote.publicReadToken !== undefined;
-  } catch (e) {
-    cfgError = e instanceof Error ? e.message : String(e);
+    cfg = getCfg(options);
+  } catch {
+    // On reste minimal même si la config échoue — pas de message exploitable.
+    return new Response(
+      JSON.stringify({
+        status: "error",
+        server: "annecy-sig-mcp",
+        transport: "http",
+      }),
+      {
+        status: 500,
+        headers: { "content-type": "application/json", "cache-control": "no-store" },
+      },
+    );
   }
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders(cfg, requestOrigin) });
+  }
+  const response = handlePublicHealth(cfg);
+  return withCorsHeaders(response, cfg, requestOrigin);
+}
 
-  const httpStats = getArcgisHttpStats();
-  const loggerStats = getLoggerStats();
-  const body = {
-    status: cfgError ? "error" : "ok",
-    server: "annecy-sig-mcp",
-    mode,
-    transport: "http" as const,
-    serverVersion: SERVER_VERSION,
-    publicOnly,
-    internalToolsAllowed,
-    bearerRequired,
-    uptimeMs: Date.now() - HEALTH_BOOTED_AT,
-    runtime: {
-      arcgis: httpStats,
-      tools: loggerStats,
-    },
-    ...(cfgError ? { error: cfgError } : {}),
-  };
-
-  return new Response(JSON.stringify(body), {
-    status: cfgError ? 500 : 200,
-    headers: {
-      "content-type": "application/json",
-      "cache-control": "no-store",
-      ...corsHeaders(),
-    },
-  });
+/**
+ * Handler `/api/health/internal` — diagnostic détaillé, **protégé par Bearer**
+ * (`MCP_ADMIN_TOKEN`, fallback `MCP_PUBLIC_READ_TOKEN`).
+ */
+export async function handleHttpInternalHealthRequest(
+  req: Request,
+  options?: HttpHandlerOptions,
+): Promise<Response> {
+  const requestOrigin = req.headers.get("origin");
+  const cfg = getCfg(options);
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders(cfg, requestOrigin) });
+  }
+  const response = await handleInternalHealth(req, { cfg });
+  return withCorsHeaders(response, cfg, requestOrigin);
 }

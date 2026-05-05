@@ -15,7 +15,11 @@
  *   {"ts":"2026-05-02T15:50:01.123Z","level":"info","event":"tool.exec",
  *    "tool":"query_layer","layerId":9,"latencyMs":124}
  *
- * Compteurs runtime (`getLoggerStats`) exposés par `/api/health`.
+ * Compteurs runtime (`getLoggerStats`) exposés via `/api/health/internal`.
+ *
+ * Aucune fuite de PII : les coordonnées ne doivent pas y apparaître brutes
+ * (utiliser `roundCoord`), les IPs sont hashées (`redactIp` côté rateLimit),
+ * et `sanitizeMessage` retire tout en-tête `Authorization` / Bearer / token.
  */
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
@@ -33,7 +37,7 @@ export function resetLoggerStats(): void {
   lastToolErrorMessage = null;
 }
 
-/** Statistiques agrégées exposées via `/api/health`. */
+/** Statistiques agrégées exposées via `/api/health/internal`. */
 export function getLoggerStats(): {
   toolCallsTotal: number;
   toolErrorsTotal: number;
@@ -48,15 +52,45 @@ export function getLoggerStats(): {
   };
 }
 
+/**
+ * Sanitisation conservatrice d'un message d'erreur avant log :
+ * - retire toute occurrence d'« authorization: bearer ... » ;
+ * - retire les tokens potentiels (séquences alpha-num ≥ 24).
+ *
+ * Cette fonction n'a pas vocation à remplacer les bonnes pratiques côté
+ * appelant (ne pas inclure de secret dans un message d'exception) ; c'est
+ * un filet de sécurité.
+ */
+export function sanitizeMessage(message: string): string {
+  return message
+    .replace(/authorization\s*:\s*bearer\s+[^\s,]+/gi, "authorization: <redacted>")
+    .replace(/\bbearer\s+[A-Za-z0-9._\-=]{4,}/gi, "bearer <redacted>")
+    .replace(/\b[A-Za-z0-9_-]{24,}\b/g, "<redacted-token>");
+}
+
+/** Arrondit une coordonnée pour log (3 décimales ≈ 110 m de résolution). */
+export function roundCoord(n: number | undefined): number | undefined {
+  if (n === undefined || !Number.isFinite(n)) return undefined;
+  return Math.round(n * 1000) / 1000;
+}
+
 function emit(level: LogLevel, event: string, payload: Record<string, unknown>): void {
+  const safe: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(payload)) {
+    if (typeof v === "string" && (k === "message" || k === "error")) {
+      safe[k] = sanitizeMessage(v);
+    } else {
+      safe[k] = v;
+    }
+  }
   const line = JSON.stringify({
     ts: new Date().toISOString(),
     level,
     event,
-    ...payload,
+    ...safe,
   });
   // stderr-only — protège stdio MCP.
-   
+  // eslint-disable-next-line no-console
   console.error(line);
 }
 
@@ -75,7 +109,7 @@ export const logger = {
       toolErrorsTotal++;
       lastToolErrorAt = Date.now();
       const m = payload.message;
-      if (typeof m === "string") lastToolErrorMessage = m;
+      if (typeof m === "string") lastToolErrorMessage = sanitizeMessage(m);
     }
     emit("error", event, payload);
   },
@@ -86,20 +120,46 @@ export const logger = {
  * `tool.error` (échec) avec latence, code d'erreur, et contexte couche.
  *
  * Le wrapper **ne mute pas** la valeur de retour ni les erreurs (rethrow tel quel).
+ *
+ * Cas particulier : si la callback retourne `{ isError: true, ... }` (cas du
+ * SDK MCP qui sérialise l'erreur dans la réponse au lieu de throw), on
+ * considère l'appel comme un échec et on incrémente `toolErrorsTotal`.
  */
 export async function withToolTracing<T>(
   toolName: string,
-  ctx: { serviceKey?: string; layerId?: number; mode?: string },
+  ctx: { serviceKey?: string; layerId?: number; mode?: string; lat?: number; lon?: number },
   fn: () => Promise<T>,
 ): Promise<T> {
   const startedAt = Date.now();
   toolCallsTotal++;
+  const sanitisedCtx: Record<string, unknown> = {
+    ...(ctx.serviceKey ? { serviceKey: ctx.serviceKey } : {}),
+    ...(ctx.layerId !== undefined ? { layerId: ctx.layerId } : {}),
+    ...(ctx.mode ? { mode: ctx.mode } : {}),
+    ...(ctx.lat !== undefined ? { lat: roundCoord(ctx.lat) } : {}),
+    ...(ctx.lon !== undefined ? { lon: roundCoord(ctx.lon) } : {}),
+  };
   try {
     const result = await fn();
+    const latencyMs = Date.now() - startedAt;
+    if (typeof result === "object" && result !== null && (result as { isError?: boolean }).isError === true) {
+      // L'outil a renvoyé un AppError sérialisé via `jsonErr()`.
+      toolErrorsTotal++;
+      lastToolErrorAt = Date.now();
+      // On ne plonge pas dans le payload pour extraire l'erreur ; le code de
+      // l'outil sait déjà la log si nécessaire. On marque juste l'événement.
+      logger.error("tool.error", {
+        tool: toolName,
+        ...sanitisedCtx,
+        latencyMs,
+        status: "tool-error",
+      });
+      return result;
+    }
     logger.info("tool.exec", {
       tool: toolName,
-      ...ctx,
-      latencyMs: Date.now() - startedAt,
+      ...sanitisedCtx,
+      latencyMs,
       status: "ok",
     });
     return result;
@@ -113,11 +173,32 @@ export async function withToolTracing<T>(
         : "UNKNOWN";
     logger.error("tool.error", {
       tool: toolName,
-      ...ctx,
+      ...sanitisedCtx,
       latencyMs: Date.now() - startedAt,
       code,
       message: e instanceof Error ? e.message : String(e),
     });
     throw e;
   }
+}
+
+/**
+ * À appeler une fois au boot du transport HTTP : émet un warning explicite si
+ * la config remote n'a pas de Bearer activé alors qu'on est probablement en
+ * environnement déployé (heuristique `VERCEL_ENV` / `NODE_ENV`).
+ */
+export function warnIfPublicTokenMissing(opts: {
+  bearerRequired: boolean;
+  publicOnly: boolean;
+}): void {
+  if (opts.bearerRequired) return;
+  const isRemote =
+    process.env.VERCEL === "1" ||
+    process.env.VERCEL_ENV !== undefined ||
+    process.env.NODE_ENV === "production";
+  if (!isRemote) return;
+  logger.warn("auth.bearer_disabled", {
+    publicOnly: opts.publicOnly,
+    hint: "MCP_PUBLIC_READ_TOKEN absent en environnement remote — endpoint /api/mcp ouvert.",
+  });
 }

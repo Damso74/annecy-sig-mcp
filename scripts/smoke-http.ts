@@ -41,8 +41,10 @@ const REQUIRED_PUBLIC_TOOLS = [
   // V1.0 — vue travaux **public-light**.
   "list_public_works",
   "search_public_works_nearby",
-  // V1.1 — découverte d'intention citoyenne (offline) : 16 outils publics au total.
+  // V1.1 — découverte d'intention citoyenne (offline).
   "recommend_layers_for_intent",
+  // V1.2 — outil haut-niveau citoyen : 17 outils publics au total.
+  "citizen_query",
 ] as const;
 
 const FORBIDDEN_INTERNAL_TOOLS = [
@@ -111,16 +113,17 @@ async function startLocalServer(): Promise<{
   close: () => Promise<void>;
 }> {
   // Import dynamique APRÈS avoir fixé l'env, pour que loadConfig() voie le token.
-  const { handleHttpMcpRequest, handleHttpHealthRequest } = await import(
-    "../src/runtime/httpHandler.js"
-  );
+  const { handleHttpMcpRequest, handleHttpHealthRequest, handleHttpInternalHealthRequest } =
+    await import("../src/runtime/httpHandler.js");
 
   const server = createServer((req, res) => {
     void (async () => {
       try {
         const webReq = await nodeReqToWebRequest(req, "http://127.0.0.1");
         let webRes: Response;
-        if (req.url?.startsWith("/api/health")) {
+        if (req.url?.startsWith("/api/health/internal")) {
+          webRes = await handleHttpInternalHealthRequest(webReq);
+        } else if (req.url?.startsWith("/api/health")) {
           webRes = handleHttpHealthRequest(webReq);
         } else if (req.url?.startsWith("/api/mcp")) {
           webRes = await handleHttpMcpRequest(webReq);
@@ -157,8 +160,11 @@ async function checkHealth(baseUrl: string): Promise<{ ok: boolean; message: str
   if (body.status !== "ok") return { ok: false, message: `status=${String(body.status)}` };
   if (body.transport !== "http") return { ok: false, message: `transport=${String(body.transport)}` };
   if (body.publicOnly !== true) return { ok: false, message: "publicOnly=false (attendu true en remote)" };
-  if (body.internalToolsAllowed !== false) {
-    return { ok: false, message: "internalToolsAllowed=true (attendu false par défaut)" };
+  // V1.2 — payload public minimal : on vérifie l'absence des champs internes.
+  for (const k of ["uptimeMs", "runtime", "internalToolsAllowed", "rateLimit", "config"]) {
+    if (k in body) {
+      return { ok: false, message: `payload public ne doit pas contenir « ${k} »` };
+    }
   }
   return { ok: true, message: `serverVersion=${String(body.serverVersion)}` };
 }
@@ -255,13 +261,39 @@ async function checkCorsPreflight(baseUrl: string): Promise<{ ok: boolean; messa
   return { ok: true, message: "preflight CORS conforme (no cookies, no DELETE)" };
 }
 
+async function checkInternalHealth(
+  baseUrl: string,
+  token: string,
+): Promise<{ ok: boolean; message: string }> {
+  const noAuth = await fetch(`${baseUrl}/api/health/internal`);
+  if (noAuth.status !== 401) {
+    return { ok: false, message: `internal sans token attendu 401, reçu ${noAuth.status}` };
+  }
+  const ok = await fetch(`${baseUrl}/api/health/internal`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (ok.status !== 200) {
+    return { ok: false, message: `internal avec token attendu 200, reçu ${ok.status}` };
+  }
+  const body = (await ok.json()) as Record<string, unknown>;
+  if (typeof body.uptimeMs !== "number") {
+    return { ok: false, message: "uptimeMs absent du payload internal" };
+  }
+  if (!body.config || !body.rateLimit || !body.runtime) {
+    return { ok: false, message: "payload internal incomplet (config/rateLimit/runtime)" };
+  }
+  return { ok: true, message: "internal protégé OK" };
+}
+
 async function main(): Promise<void> {
   // Force la config remote en mode public-only avec auth Bearer activée pour
-  // exercer le verrou et l'auth.
+  // exercer le verrou et l'auth. Rate limit volontairement large pour ne pas
+  // bloquer le smoke local.
   process.env.REMOTE_PUBLIC_ONLY = "true";
   process.env.REMOTE_ALLOW_INTERNAL_TOOLS = "false";
   process.env.MCP_PUBLIC_READ_TOKEN = SMOKE_TOKEN;
   process.env.DEFAULT_MODE = "public";
+  process.env.MCP_RATE_LIMIT_ENABLED = process.env.MCP_RATE_LIMIT_ENABLED ?? "false";
 
   const { baseUrl, close } = await startLocalServer();
   log(`serveur local prêt sur ${baseUrl}`);
@@ -318,6 +350,9 @@ async function main(): Promise<void> {
       internalRefusal.refused,
       internalRefusal.message,
     );
+
+    const internalHealth = await checkInternalHealth(baseUrl, SMOKE_TOKEN);
+    record("/api/health/internal protégé par Bearer", internalHealth.ok, internalHealth.message);
   } finally {
     await close();
   }

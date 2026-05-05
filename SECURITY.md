@@ -22,7 +22,9 @@ aucun proxy arbitraire, aucune donnée personnelle réelle dans le repo.
 - [11. Secrets gérés](#11-secrets-gérés)
 - [12. Procédure de rotation `MCP_PUBLIC_READ_TOKEN`](#12-procédure-de-rotation-mcp_public_read_token)
 - [13. Audit dépendances](#13-audit-dépendances)
-- [14. Drift de schéma ArcGIS](#14-drift-de-schéma-arcgis)
+- [14. Hardening V1.2 — rate limiting, healthcheck, CORS, timeouts](#14-hardening-v12--rate-limiting-healthcheck-cors-timeouts)
+- [15. Données et responsabilité](#15-données-et-responsabilité)
+- [16. Drift de schéma ArcGIS](#16-drift-de-schéma-arcgis)
 - [Signaler une vulnérabilité](#signaler-une-vulnérabilité)
 
 ---
@@ -273,7 +275,133 @@ Trois mécanismes :
    `audit:check` à chaque push (`continue-on-error: true` pour ne pas
    bloquer un fix urgent ; signal de bruit, pas un mur).
 
-## 14. Drift de schéma ArcGIS
+## 14. Hardening V1.2 — rate limiting, healthcheck, CORS, timeouts
+
+V1.2 ajoute des verrous opérationnels autour du système Bearer existant
+**sans** changer l'auth (toujours mono-token via `MCP_PUBLIC_READ_TOKEN`).
+
+### 14.1 Rate limiting
+
+- Module : `src/runtime/rateLimit.ts`.
+- Trois fenêtres :
+  - **par IP** (`MCP_RATE_LIMIT_IP_PER_MINUTE`, défaut 60 / minute) ;
+  - **globale** (`MCP_RATE_LIMIT_GLOBAL_PER_MINUTE`, défaut 300 / minute) ;
+  - **outils lourds** (`MCP_RATE_LIMIT_HEAVY_TOOL_PER_HOUR`, défaut 30 / IP /
+    heure) — `inventory_all_layers`, `recommend_open_data_candidates`, et les
+    quatre `generate_*_*` rapports.
+- Réponse 429 strictement JSON-RPC :
+
+  ```json
+  {
+    "jsonrpc": "2.0",
+    "error": {
+      "code": -32029,
+      "message": "Rate limit exceeded",
+      "data": { "retryAfterSeconds": 60 }
+    },
+    "id": null
+  }
+  ```
+
+- L'IP n'est **jamais** renvoyée au client. Dans les logs, elle est tronquée
+  / hashée (`redactIp`).
+- `OPTIONS` n'est jamais rate-limité.
+- Le rate limit est évalué **avant** l'auth Bearer pour limiter le brute
+  force sur le token.
+- Backend par défaut : in-memory (`InMemoryRateLimitStore`), suffisant en
+  local et acceptable en single-instance Vercel. Pour multi-instance,
+  configurer Upstash Redis via `UPSTASH_REDIS_REST_URL` /
+  `UPSTASH_REDIS_REST_TOKEN` ; sinon le serveur retombe sur la mémoire et
+  `/api/health/internal` reflète `rateLimit.store = "memory"` plutôt que
+  `"upstash"`.
+
+### 14.2 Timeouts
+
+- `MCP_REQUEST_TIMEOUT_MS` (défaut 25 000) — timeout global d'une requête
+  `/api/mcp`. En cas de dépassement, réponse JSON-RPC `-32030` (`Request
+  timeout`) HTTP 504.
+- `MCP_HEAVY_TOOL_TIMEOUT_MS` (défaut 20 000) — appliqué aux outils lourds.
+- `ARCGIS_TIMEOUT_MS` reste le timeout unitaire des appels ArcGIS et n'est
+  **pas** modifié.
+
+### 14.3 Healthcheck minimal vs interne
+
+- `/api/health` (public) renvoie strictement :
+
+  ```json
+  {
+    "status": "ok",
+    "server": "annecy-sig-mcp",
+    "transport": "http",
+    "serverVersion": "1.x.y",
+    "mode": "public",
+    "publicOnly": true,
+    "bearerRequired": true
+  }
+  ```
+
+  Plus aucune fuite d'`uptimeMs`, de stats cache ArcGIS, de compteurs
+  outils ou de message d'erreur.
+
+- `/api/health/internal` (protégé) expose `uptimeMs`, stats cache ArcGIS,
+  compteurs outils, état du rate limiter et flags de configuration non
+  sensibles. Auth Bearer obligatoire :
+  - `MCP_ADMIN_TOKEN` si défini (recommandé en prod) ;
+  - sinon fallback `MCP_PUBLIC_READ_TOKEN` ;
+  - sinon, en environnement remote / prod, l'endpoint répond 401.
+
+  Aucun secret (token, valeur attendue, env brute) n'est jamais exposé
+  dans cette réponse — y compris pas de hash partiel.
+
+### 14.4 CORS configurable
+
+- `MCP_CORS_ALLOWED_ORIGINS="*"` (défaut) — comportement existant
+  (`Access-Control-Allow-Origin: *`).
+- `MCP_CORS_ALLOWED_ORIGINS="https://copilot.microsoft.com,https://chat.openai.com"`
+  — l'origine de la requête est comparée à la liste, le serveur renvoie
+  l'origine exacte autorisée + `Vary: Origin`. Origine inconnue ⇒ pas de
+  header `Allow-Origin` (le navigateur bloque la requête).
+- **Jamais** de `Access-Control-Allow-Credentials` (le serveur n'a pas
+  vocation à recevoir de cookies).
+- Headers autorisés : `Authorization`, `Content-Type`, `MCP-Protocol-Version`.
+- Méthodes : `GET`, `POST`, `OPTIONS`.
+
+### 14.5 Logs sanitisés
+
+- `runtime/logger.ts` redacte automatiquement toute occurrence de
+  `Authorization: ...`, `Bearer ...`, `token=...` ou séquence longue
+  ressemblant à un secret avant écriture sur stderr.
+- Les coordonnées éventuellement loguées sont arrondies à 3 décimales via
+  `roundCoord`. La pratique recommandée reste de ne pas les logger.
+- `withToolTracing` est appliqué à **tous** les outils MCP (registration
+  côté `src/server.ts`) — `toolCallsTotal`, `toolErrorsTotal`,
+  `lastToolErrorMessage` (sanitisé) sont disponibles côté
+  `/api/health/internal`.
+
+### 14.6 `citizen_query` — UX MCP citoyenne
+
+- Outil haut-niveau qui n'expose **jamais** `serviceKey` / `layerId` / `mode`
+  à l'usager.
+- Toujours `mode: public`.
+- En cas de localisation manquante, demande **un lieu** (jamais un identifiant
+  technique). En cas de demande hors périmètre, oriente vers les canaux
+  officiels.
+- N'invente jamais d'horaires, de disponibilités temps réel ou de règles
+  opposables. Joint systématiquement un disclaimer indicatif.
+
+## 15. Données et responsabilité
+
+- **Source** : portail SIG d'Annecy (`portailsig.annecy.fr`) uniquement.
+- **Lecture seule absolue** : aucune écriture ArcGIS dans ce code, aucun
+  proxy arbitraire.
+- **Données indicatives** : non opposables, non temps réel sauf flux
+  documenté comme tel.
+- **Pas de décision administrative automatisée** : ce service n'émet aucun
+  arrêté, aucun avis, aucune réponse opposable.
+- **Service expérimental** : pour toute démarche officielle, se référer aux
+  canaux de la Ville d'Annecy.
+
+## 16. Drift de schéma ArcGIS
 
 `scripts/sync-registry-from-arcgis.ts` (live) garantit que les `outFields`
 envoyés à ArcGIS correspondent à la réalité du schéma. La CI manuelle

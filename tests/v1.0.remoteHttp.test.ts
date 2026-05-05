@@ -175,7 +175,7 @@ describe("V1.0 — handleHttpHealthRequest", () => {
     }
   });
 
-  it("retourne status=ok sans appeler ArcGIS et sans exiger d'auth", async () => {
+  it("retourne status=ok sans appeler ArcGIS et sans exiger d'auth (payload minimal V1.2)", async () => {
     const res = handleHttpHealthRequest(new Request("http://localhost/api/health"));
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
@@ -183,9 +183,12 @@ describe("V1.0 — handleHttpHealthRequest", () => {
     expect(body.transport).toBe("http");
     expect(body.server).toBe("annecy-sig-mcp");
     expect(body.publicOnly).toBe(true);
-    expect(body.internalToolsAllowed).toBe(false);
     expect(body.bearerRequired).toBe(false);
     expect(typeof body.serverVersion).toBe("string");
+    // V1.2 — les détails opérationnels passent en /api/health/internal.
+    for (const k of ["uptimeMs", "runtime", "internalToolsAllowed", "rateLimit", "config"]) {
+      expect(body[k]).toBeUndefined();
+    }
   });
 
   it("indique bearerRequired=true quand MCP_PUBLIC_READ_TOKEN est défini", async () => {
@@ -202,6 +205,8 @@ describe("V1.0 — handleHttpMcpRequest auth Bearer", () => {
     process.env.REMOTE_PUBLIC_ONLY = "true";
     process.env.REMOTE_ALLOW_INTERNAL_TOOLS = "false";
     process.env.DEFAULT_MODE = "public";
+    // V1.2 — rate-limit désactivé pour ne pas masquer les attentes 401 par 429.
+    process.env.MCP_RATE_LIMIT_ENABLED = "false";
   });
   afterEach(() => {
     for (const k of [
@@ -209,6 +214,7 @@ describe("V1.0 — handleHttpMcpRequest auth Bearer", () => {
       "REMOTE_ALLOW_INTERNAL_TOOLS",
       "REMOTE_PUBLIC_ONLY",
       "DEFAULT_MODE",
+      "MCP_RATE_LIMIT_ENABLED",
     ]) {
       if (original[k] === undefined) delete process.env[k];
       else process.env[k] = original[k];

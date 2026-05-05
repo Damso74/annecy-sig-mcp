@@ -9,6 +9,9 @@
     },
     "api/health.ts": {
       "maxDuration": 5
+    },
+    "api/health/internal.ts": {
+      "maxDuration": 5
     }
   },
   "headers": [
