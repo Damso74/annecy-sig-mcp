@@ -157,7 +157,7 @@ Toute interrogation passe par la vue **public-light** décrite ci-dessous.
 - `id_public` — **hash opaque préfixé `pw_`** (12 caractères hex SHA-256
   calculés à partir de `serviceKey:layerId:objectid:salt`). Jamais
   l’`OBJECTID` brut, jamais réversible sans le salt
-  `PUBLIC_WORK_ID_SALT` (cf. `docs/SECURITY.md` §10.5).
+  `PUBLIC_WORK_ID_SALT` (cf. `SECURITY.md` §10.5).
 - `titre_public` — titre simplifié.
 - `statut_public` — statut simplifié (« En cours », « À venir », « En
 retard », « Réfection provisoire », « Réfection définitive », « Statut

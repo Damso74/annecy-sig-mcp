@@ -1,6 +1,6 @@
 {
   "name": "annecy-sig-mcp",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0",
   "description": "Serveur MCP lecture seule pour couches ArcGIS REST Ville d'Annecy (allowlist)",
   "type": "module",
   "main": "dist/index.js",

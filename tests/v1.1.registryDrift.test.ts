@@ -77,10 +77,19 @@ describe("V1.1 — registry.fields.generated cohérent avec le registre", () => 
   });
 
   it("publicFields (registre) ⊆ champs ArcGIS — vérification offline via fixtures connues", () => {
-    // Note : mobilite/10 est volontairement **omis** ici. La fixture historique
-    // déclare `denomination` (consommée par d'autres tests d'inventaire),
-    // alors que le schéma ArcGIS réel expose `titre` à la place. Le drift est
-    // détecté en LIVE par `npm run check:registry` (CI quotidien).
+    // Note 1 : mobilite/10 est volontairement **omis** ici. La fixture
+    // historique déclare `denomination` (consommée par d'autres tests
+    // d'inventaire), alors que le schéma ArcGIS réel expose `titre` à la place.
+    // Le drift est détecté en LIVE par `npm run check:registry` (CI quotidien).
+    //
+    // Note 2 : ce test ne valide QUE `publicFields` contre les fixtures
+    // statiques. Les `internalFields` sont générés depuis le schéma ArcGIS
+    // LIVE par `scripts/sync-registry-from-arcgis.ts` (ils incluent tous les
+    // champs non-sensibles non-public exposés par ArcGIS). Par construction
+    // ils sont donc ⊆ ArcGIS LIVE, mais pas nécessairement ⊆ fixture
+    // historique (la fixture peut être en retard sur le schéma actuel).
+    // C'est `npm run check:registry` qui certifie l'alignement registre ↔
+    // ArcGIS LIVE en CI.
     const cases: { serviceKey: string; layerId: number; fixture: string }[] = [
       { serviceKey: "equipements", layerId: 5, fixture: "equipements-wc-metadata.json" },
       { serviceKey: "equipements", layerId: 0, fixture: "equipements-admin-metadata.json" },
@@ -95,12 +104,12 @@ describe("V1.1 — registry.fields.generated cohérent avec le registre", () => 
       );
       expect(entry, `Couche ${c.serviceKey}/${c.layerId} introuvable`).toBeDefined();
       const drift: string[] = [];
-      for (const f of [...(entry?.publicFields ?? []), ...(entry?.internalFields ?? [])]) {
+      for (const f of entry?.publicFields ?? []) {
         if (!arcgis.has(f.toLowerCase())) {
           drift.push(`${c.serviceKey}/${c.layerId}:${f}`);
         }
       }
-      expect(drift, `Drift registre ↔ fixture ${c.fixture} : ${drift.join(", ")}`).toEqual([]);
+      expect(drift, `Drift publicFields ↔ fixture ${c.fixture} : ${drift.join(", ")}`).toEqual([]);
     }
   });
 

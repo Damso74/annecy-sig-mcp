@@ -1,0 +1,56 @@
+name: Demander l'ajout d'une couche SIG
+description: Demander l'ajout d'une couche déjà publique sur portailsig.annecy.fr.
+labels: ["layer-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Toute couche ajoutée doit être **déjà publique** sur le portail SIG
+        d'Annecy. La revue d'allowlist vérifiera la sanitation des champs
+        sensibles avant exposition.
+
+  - type: input
+    id: service
+    attributes:
+      label: Service ArcGIS
+      placeholder: "EQUIPEMENTS / MOBILITE / TRAVAUX / autre"
+    validations:
+      required: true
+
+  - type: input
+    id: layer-id
+    attributes:
+      label: Layer ID
+      placeholder: "12"
+    validations:
+      required: true
+
+  - type: input
+    id: arcgis-url
+    attributes:
+      label: URL ArcGIS de la couche
+      placeholder: "https://portailsig.annecy.fr/server/rest/services/.../MapServer/12"
+    validations:
+      required: true
+
+  - type: textarea
+    id: usecase
+    attributes:
+      label: Cas d'usage envisagé
+      description: Citoyen ? Interne DSI ? Open data ? Chatbot ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: fields
+    attributes:
+      label: Champs à exposer en mode public (proposition)
+      description: |
+        Liste des champs qui ont du sens en sortie publique. Les champs
+        sensibles (created_user, last_edited_*, GLOBALID, url_pj, etc.) seront
+        bloqués automatiquement par la dénylist.
+      placeholder: |
+        - denomination
+        - adresse
+        - commune
+        - horaire

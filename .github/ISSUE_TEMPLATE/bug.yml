@@ -1,0 +1,74 @@
+name: Bug report
+description: Signaler un comportement inattendu du serveur MCP.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de prendre le temps de signaler ce bug. Pour les **vulnérabilités
+        de sécurité**, ne pas ouvrir d'issue publique : suivre la procédure
+        dans [SECURITY.md](https://github.com/Damso74/annecy-sig-mcp/blob/main/SECURITY.md).
+
+  - type: textarea
+    id: what
+    attributes:
+      label: Que s'est-il passé ?
+      description: Décrivez le comportement observé et le comportement attendu.
+      placeholder: |
+        L'outil `query_layer` retourne un ARCGIS_ERROR 400 quand j'appelle…
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Étapes pour reproduire
+      description: La séquence minimale d'appels qui déclenche le bug.
+      placeholder: |
+        1. `list_services` mode public
+        2. `query_layer` serviceKey=mobilite, layerId=9, where="..."
+        3. Erreur reçue : ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: transport
+    attributes:
+      label: Transport
+      options:
+        - HTTP (mcp.leadalpes.fr)
+        - stdio local
+        - Les deux
+        - Pas certain
+    validations:
+      required: true
+
+  - type: dropdown
+    id: client
+    attributes:
+      label: Client MCP utilisé
+      options:
+        - Cursor
+        - Claude Desktop
+        - Continue
+        - n8n
+        - curl / agent custom
+        - Autre (préciser dans description)
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / réponses brutes
+      description: |
+        Coller les logs pertinents (stderr) ou la réponse JSON-RPC d'erreur.
+        **Ne pas inclure de jeton Bearer en clair.**
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: Version du serveur
+      description: Vue dans `/api/health` → `serverVersion`, ou dans `package.json`.
+      placeholder: "1.0.0"

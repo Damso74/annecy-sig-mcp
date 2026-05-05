@@ -85,21 +85,22 @@ async function buildOverride(entry: LayerRegistryEntry): Promise<Override> {
   const arcgisFields = (meta.fields ?? []).map(f => f.name).filter((x): x is string => Boolean(x));
   const arcgisLc = new Set(arcgisFields.map(x => x.toLowerCase()));
 
-  const { genericPublic, genericInternalExtra } = genericFor(entry);
+  const { genericPublic } = genericFor(entry);
   const wantedPublicLc = new Set(genericPublic.map(x => x.toLowerCase()));
-  const wantedInternalLc = new Set(
-    [...genericPublic, ...genericInternalExtra].map(x => x.toLowerCase()),
-  );
 
   const publicFields: string[] = [];
   const internalExtraFields: string[] = [];
 
+  // Stratégie internal : exposer **tous** les champs ArcGIS non sensibles qui
+  // ne sont pas déjà en public. C'est volontairement plus large que la liste
+  // générique du registre (qui n'arrive jamais à couvrir l'hétérogénéité réelle
+  // des couches). Le filtre SENSITIVE_LC reste la seule garde-fou côté schéma.
   for (const f of arcgisFields) {
     const lc = f.toLowerCase();
     if (SENSITIVE_LC.has(lc)) continue;
     if (wantedPublicLc.has(lc)) {
       publicFields.push(f);
-    } else if (wantedInternalLc.has(lc)) {
+    } else {
       internalExtraFields.push(f);
     }
   }

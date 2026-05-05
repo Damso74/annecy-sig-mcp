@@ -1,5 +1,40 @@
 # Changelog — annecy-sig-mcp
 
+## 1.0.0 (2026-05-05)
+
+Première **release stable**. Promotion depuis `1.0.0-rc.1` après validation
+terrain Cursor (mode public distant + mode internal local DSI), rebuild propre
+du registre ArcGIS et hardening final.
+
+- **Fix `internalExtraFields` du registre généré** :
+  `scripts/sync-registry-from-arcgis.ts` exposait précédemment uniquement les
+  champs ArcGIS qui figuraient déjà dans la liste générique du service. Cela
+  laissait passer beaucoup de champs métier réels (`site`, `nb_borne`,
+  `chademo` sur `mobilite/9` BRVE ; champs additionnels sport, équipements,
+  etc.). Désormais **tous** les champs ArcGIS non sensibles non-public sont
+  classés en `internalExtraFields`. Le filtre `SENSITIVE_LC` reste l'unique
+  garde-fou. Régénération complète : 28 couches couvertes, exemples notables
+  `mobilite/9` 0 → 5 internal extras, `equipements/9` (sport) 0 → 9 internal
+  extras.
+- **Test offline `v1.1.registryDrift`** assoupli en cohérence : la fixture
+  statique ne pouvant suivre l'évolution live ArcGIS, on ne valide plus que
+  `publicFields ⊆ fixture` ; la cohérence registre ↔ ArcGIS LIVE reste
+  certifiée par le cron quotidien `npm run check:registry`.
+- **Bug fix `DEFAULT_MODE` stdio local** (commit `a433691`) : `createMcpServer`
+  ne propageait pas `cfg.defaultMode`, ce qui forçait silencieusement
+  `mode: "public"` même quand `.cursor/mcp.json` déclarait
+  `DEFAULT_MODE=internal`. Désormais propagé explicitement.
+- **Page d'accueil publique refaite** (`public/index.html`) : design moderne
+  responsive light/dark, badges live (version + uptime via `/api/health`),
+  bouton copier-coller pour la config Cursor, sections démarrer / outils /
+  couches / sécurité.
+- **Documentation onboarding DSI** : nouveau `docs/README-DSI-Annecy.md`
+  (1 page, 15 minutes, profils remote public et stdio internal local,
+  dépannage opérationnel).
+- **Aucun changement de contrat** : `schemaVersion` de tous les `generate_*`
+  inchangé (`*.v1`). Aucune modification de la logique public/internal,
+  lecture seule, allowlist, sanitation.
+
 ## 1.0.0-rc.1 (2026-04-30)
 
 Release candidate — pas de nouvelle fonctionnalité métier, le MCP est prêt à
