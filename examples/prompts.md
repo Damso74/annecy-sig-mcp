@@ -4,6 +4,44 @@ Catalogue de prompts copier-coller pour explorer le SIG Annecy via le serveur
 MCP. Pour la **recette terrain** officielle (6 prompts à dérouler avant un
 tag), voir `docs/RECETTE_TERRAIN.md`.
 
+## Assistant citoyen V1.2 — `citizen_query` (recommandé)
+
+Outil haut-niveau qui choisit la couche tout seul, refuse les questions hors
+périmètre (RGPD, données nominatives) et répond en français sans jamais
+demander `serviceKey`/`layerId`. **Premier réflexe** pour toute question
+citoyenne.
+
+```txt
+citizen_query : Quelles sont les toilettes publiques les plus proches de
+l'Hôtel de Ville d'Annecy ?
+```
+
+```txt
+citizen_query : Où puis-je charger ma voiture électrique près du centre-ville
+d'Annecy ?
+```
+
+```txt
+citizen_query : Je cherche une place PMR près du Pâquier, tu peux m'aider ?
+```
+
+```txt
+citizen_query : Y a-t-il des travaux près de Bonlieu ?
+```
+
+```txt
+citizen_query : Où garer mon vélo près de la gare d'Annecy ?
+```
+
+```txt
+citizen_query : Peux-tu me donner les coordonnées personnelles des agents
+municipaux liés aux travaux ?
+```
+
+> Le dernier prompt doit retourner `status: "out_of_scope"` avec un message
+> sobre renvoyant vers les canaux officiels — c'est le test RGPD du patch
+> V1.2.1.
+
 ## Public — découverte
 
 ```txt

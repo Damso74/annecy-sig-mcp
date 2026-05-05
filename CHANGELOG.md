@@ -1,5 +1,81 @@
 # Changelog — annecy-sig-mcp
 
+## Unreleased — séries V1.1, V1.2, V1.2.1 (hardening citoyen)
+
+> Ces séries sont déployées sur l'instance Vercel `https://mcp.leadalpes.fr`
+> mais ne sont pas encore taggées dans `package.json` (toujours `1.0.0`).
+> `source.serverVersion` exposé par le serveur reste donc `1.0.0` jusqu'au
+> prochain bump explicite.
+
+### V1.2.1 — patch routing `citizen_query` (2026-05-05)
+
+- **Bug fix `citizen_query` — intentions travaux** : les requêtes du type
+  *« travaux près de Bonlieu »*, *« chantier dans ma rue »*, *« voirie /
+  perturbation / circulation perturbée / rue barrée »* étaient parfois
+  routées vers la couche générique `equipements/0` (Administration). Désormais
+  routage déterministe vers `search_public_works_nearby` si lat/lon fournis,
+  sinon `list_public_works`. `isWorksIntent` exporté pour réutilisation.
+- **Bug fix `citizen_query` — données nominatives / RGPD** : les questions
+  type *« coordonnées personnelles d'un agent »*, *« téléphone / email d'un
+  employé municipal »*, *« attestation / décision administrative »* étaient
+  routées vers une couche SIG arbitraire (ex. `equipements/4` Cimetière) et
+  retournaient des items absurdes. Nouveau garde `isOutOfScopeIntent` placé
+  **avant** tout routing : retour immédiat `status: "out_of_scope"`, message
+  citoyen sobre renvoyant vers les canaux officiels de la Ville d'Annecy,
+  zéro item SIG, jamais de mention `serviceKey`/`layerId`.
+- **Sémantique `handleWorksIntent`** : retourne désormais `status: "answered"`
+  même quand zéro travaux trouvés — l'intention reste dans le périmètre
+  même si le résultat est vide (cohérence UX citoyenne).
+- **Tests** : `tests/v1.2.citizenQuery.test.ts` étendu (216 tests passed,
+  5 skipped) — couverture des 6 prompts citoyens de référence et des cas
+  RGPD adverses.
+- **Scripts QA** : `scripts/replay-citizen-prompts.ts` (local) et
+  `scripts/replay-citizen-prompts-remote.ts` (production) pour rejouer la
+  batterie des 6 prompts en un appel.
+- **Aucun changement** d'auth, de rate-limit, des routes Vercel ou du
+  contrat `MCP_PUBLIC_READ_TOKEN`. Patch minimal sur `src/tools/citizenQuery.ts`.
+
+### V1.2 — outil `citizen_query` (2026-05-05)
+
+- **Nouvel outil public `citizen_query`** : haut-niveau, prend une question
+  en français en entrée, choisit la couche pertinente et appelle l'outil
+  sous-jacent (`search_nearby`, `list_public_works`,
+  `search_public_works_nearby`…). Aucune invention, mode public uniquement,
+  ne demande **jamais** `serviceKey`/`layerId` à l'utilisateur final.
+  Recommandé pour Copilot Studio, Claude Desktop et Cursor en usage citoyen.
+- **Total surface publique passée à 17 outils** (16 historiques +
+  `citizen_query`). Surface internal stdio inchangée : 17 publics + 3
+  internal-only = **20 outils** en `DEFAULT_MODE=internal`.
+- **Documentation** : `examples/copilot-studio-instructions.md` recommande
+  désormais `citizen_query` comme outil principal pour les agents Copilot.
+
+### V1.1 — hardening transport HTTP public (2026-05-05)
+
+- **Auth Bearer obligatoire** sur `/api/mcp` via `MCP_PUBLIC_READ_TOKEN`
+  (lecture publique) et `MCP_ADMIN_TOKEN` (admin/health internal).
+  Refus typé `401`/`403` en JSON minimal, sans fuite de structure interne.
+- **Refus `mode=internal`** côté HTTP : tout appel JSON-RPC déclarant
+  `mode: "internal"` ou ciblant un outil internal-only (`list_current_works`,
+  `list_late_works`, `generate_internal_dashboard_brief`) est refusé avec
+  un message clair renvoyant vers le profil B (stdio local DSI). Garantit
+  qu'**aucune couche internal-only** ne peut fuiter par le transport HTTP.
+- **Rate-limit** : variables d'environnement `MCP_RATE_LIMIT_*` (fenêtre,
+  capacité, mode `local|disabled`) ; rejet `429` propre.
+- **CORS** strictement allowlisté (origines configurables), pas de wildcard
+  en production.
+- **Endpoint `/api/health` minimal et public** : ne retourne que
+  `status`, `version`, `uptimeSec`, jamais d'info sensible.
+  `/api/health?mode=internal` protégé par `MCP_ADMIN_TOKEN`, expose la liste
+  des outils, le mode actif et les compteurs de couches.
+- **Anti-leak global** : test de non-régression vérifiant que les en-têtes,
+  les corps de réponse et les messages d'erreur ne contiennent jamais
+  `bearer`, `token`, `password`, `secret`, `created_user`, `last_edited_*`,
+  `url_pj` etc., même en cas d'erreur ArcGIS.
+- **Tracing** : ID de requête + ligne NDJSON sur stderr pour chaque appel
+  HTTP, sans écrire la moindre donnée sensible.
+- **Salt opaque** `PUBLIC_WORK_ID_SALT` pour les IDs travaux exposés en
+  public (rotation possible sans casser le contrat schemaVersion).
+
 ## 1.0.0 (2026-05-05)
 
 Première **release stable**. Promotion depuis `1.0.0-rc.1` après validation

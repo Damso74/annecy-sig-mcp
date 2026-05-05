@@ -1088,7 +1088,7 @@
                           <code>Header value: Bearer VOTRE_TOKEN_RECU_PAR_MAIL</code>.
                           Stocker le jeton dans une <strong>Power Platform secret variable</strong>, jamais en clair.
                         </li>
-                        <li><strong>Save</strong> puis <strong>Test</strong>. L'agent doit voir <strong>16 outils</strong> disponibles.</li>
+                        <li><strong>Save</strong> puis <strong>Test</strong>. L'agent doit voir <strong>17 outils</strong> disponibles (dont <code>citizen_query</code>, l'outil haut-niveau recommandé pour les questions en langage naturel).</li>
                       </ol>
                       <p style="margin: 0.6rem 0 0; font-size: 0.88rem; color: var(--text-muted);">
                         Pour un agent <strong>Info SIG Annecy</strong> prêt à coller (identité, instructions
@@ -1114,7 +1114,7 @@
 }</code></pre>
                       <p style="margin: 0.5rem 0 0; font-size: 0.88rem; color: var(--text-muted);">
                         Puis <code>Settings → MCP</code> dans Cursor : activez
-                        <code>annecy-sig</code>. Vous devez voir <strong>16 outils</strong>.
+                        <code>annecy-sig</code>. Vous devez voir <strong>17 outils</strong> (dont <code>citizen_query</code>).
                       </p>
                     </div>
 
@@ -1152,7 +1152,7 @@
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'</code></pre>
                       <p style="margin: 0.5rem 0 0; font-size: 0.88rem; color: var(--text-muted);">
-                        Devrait retourner les <strong>16 outils publics</strong>.
+                        Devrait retourner les <strong>17 outils publics</strong>.
                       </p>
                     </div>
                   </div>
@@ -1179,11 +1179,18 @@
       <!-- ============ TOOLS ============ -->
       <section id="tools">
         <div class="container">
-          <h2>16 outils MCP exposés</h2>
+          <h2>17 outils MCP exposés</h2>
           <p class="section-lead">
             Tous en lecture seule, sortie JSON structurée, schémas typés (Zod) versionnés
             <code>schemaVersion: *.v1</code>.
           </p>
+
+          <div class="tools-section">
+            <h3>Assistant citoyen (V1.2) — recommandé en priorité</h3>
+            <div class="tools-grid">
+              <div class="tool"><code>citizen_query</code><p>Outil haut-niveau : prend une question en français, choisit la bonne couche, refuse les demandes hors périmètre (RGPD, données nominatives) et répond sans jamais demander <code>serviceKey</code>/<code>layerId</code> à l'utilisateur. Idéal pour Copilot Studio &amp; Claude.</p></div>
+            </div>
+          </div>
 
           <div class="tools-section">
             <h3>Découverte du catalogue</h3>

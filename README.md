@@ -93,7 +93,7 @@ npm run build           # tsc → dist/
 npm run start           # lance dist/index.js (stdio MCP)
 npm test                # vitest (offline, fixtures sous tests/fixtures/arcgis/)
 npm run smoke:mcp       # smoke stdio : démarre dist/index.js, vérifie tools + stdout silencieux
-npm run smoke:http      # smoke HTTP local : auth, refus internal, périmètre 16 outils
+npm run smoke:http      # smoke HTTP local : auth, refus internal, périmètre 17 outils
 npm run sync:registry   # régénère registry.fields.generated.ts depuis ArcGIS LIVE
 npm run check:registry  # vérifie le drift registre ↔ ArcGIS LIVE (CI cron quotidien)
 npm run schemas         # régénère schemas/*.schema.json

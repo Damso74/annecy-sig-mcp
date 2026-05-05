@@ -63,7 +63,8 @@ variable d'environnement utilisateur. **Ne jamais committer.**
 ### Étape 3 — activer dans Cursor
 
 `Cursor → Settings → MCP` : activer `annecy-sig-remote`. La pastille doit
-passer au vert et indiquer **16 outils** disponibles.
+passer au vert et indiquer **17 outils** disponibles (V1.2 : ajout de
+`citizen_query`, l'outil haut-niveau qui choisit la couche tout seul).
 
 ### Étape 4 — tester
 
@@ -153,10 +154,14 @@ profil local.
 
 | Catégorie | Outils publics (HTTP + stdio) | Outils internal (stdio uniquement) |
 | --- | --- | --- |
+| Assistant citoyen (V1.2) | `citizen_query` | — |
 | Catalogue | `list_services`, `list_layers`, `describe_layer`, `recommend_layers_for_intent` | — |
 | Requêtes | `query_layer`, `search_nearby`, `count_layer`, `detect_data_quality_issues` | — |
 | Travaux | `list_public_works`, `search_public_works_nearby` | `list_current_works`, `list_late_works` |
 | Inventaires & rapports | `inventory_all_layers`, `recommend_open_data_candidates`, `generate_inventory_report`, `generate_open_data_brief`, `generate_chatbot_readiness_report`, `generate_layer_action_plan` | `generate_internal_dashboard_brief` |
+
+Total : **17 outils publics** (HTTP remote + stdio) + **3 outils internal** réservés au
+profil B (stdio local DSI), soit **20 outils** en mode `internal`.
 
 Schémas Zod stables (`schemaVersion: "*.v1"`) pour tous les outils
 `generate_*` — exportables via `npm run schemas` puis `dist/contracts/*.json`.
@@ -177,11 +182,12 @@ Contenu détaillé : [`docs/DATA_CATALOG_PUBLIC_REMOTE.md`](DATA_CATALOG_PUBLIC_
 
 ## 6. Dépannage opérationnel
 
-### « Cursor ne montre que 16 outils alors que je suis en local internal »
+### « Cursor ne montre que 17 outils alors que je suis en local internal »
 
-C'est attendu : le filtre internal n'expose que les **3 outils internal** en
-plus, soit **19 outils** au total. Si vous en voyez **16**, le `DEFAULT_MODE`
-n'a pas été appliqué :
+C'est attendu si vous êtes en mode public (17 outils publics dont
+`citizen_query`). Le filtre internal ajoute **3 outils internal** en plus,
+soit **20 outils** au total. Si vous voyez 17 outils alors que vous attendiez
+20, le `DEFAULT_MODE=internal` n'a pas été appliqué :
 
 1. Tuer tous les processus `node` zombies (Cursor laisse parfois des MCP en vie) :
    ```powershell
