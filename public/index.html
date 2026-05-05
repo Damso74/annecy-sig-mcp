@@ -355,15 +355,53 @@
       }
       .tabs-labels label:hover { color: var(--accent); }
       .tab-content { display: none; }
+      #tab-copilot:checked ~ .tabs-content #tc-copilot,
       #tab-cursor:checked ~ .tabs-content #tc-cursor,
       #tab-claude:checked ~ .tabs-content #tc-claude,
       #tab-other:checked ~ .tabs-content #tc-other { display: block; }
+      #tab-copilot:checked ~ .tabs-labels label[for="tab-copilot"],
       #tab-cursor:checked ~ .tabs-labels label[for="tab-cursor"],
       #tab-claude:checked ~ .tabs-labels label[for="tab-claude"],
       #tab-other:checked ~ .tabs-labels label[for="tab-other"] {
         color: var(--accent);
         border-bottom-color: var(--accent);
         font-weight: 600;
+      }
+
+      /* Liste numérotée pour les procédures UI (Copilot Studio) */
+      .ui-steps {
+        list-style: none;
+        counter-reset: uistep;
+        padding: 0;
+        margin: 0.6rem 0;
+        display: grid;
+        gap: 0.55rem;
+      }
+      .ui-steps > li {
+        counter-increment: uistep;
+        position: relative;
+        padding-left: 2.1rem;
+        font-size: 0.92rem;
+        color: var(--text);
+        line-height: 1.55;
+      }
+      .ui-steps > li::before {
+        content: counter(uistep);
+        position: absolute;
+        left: 0;
+        top: 0.05rem;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 50%;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.78rem;
+        display: grid;
+        place-items: center;
+      }
+      .ui-steps code {
+        font-size: 0.86em;
       }
 
       /* ========= CODE BLOCKS ========= */
@@ -846,17 +884,43 @@
                 </p>
 
                 <div class="tabs">
-                  <input type="radio" name="client" id="tab-cursor" checked />
+                  <input type="radio" name="client" id="tab-copilot" checked />
+                  <input type="radio" name="client" id="tab-cursor" />
                   <input type="radio" name="client" id="tab-claude" />
                   <input type="radio" name="client" id="tab-other" />
 
                   <div class="tabs-labels">
+                    <label for="tab-copilot">Microsoft Copilot Studio</label>
                     <label for="tab-cursor">Cursor</label>
                     <label for="tab-claude">Claude Desktop</label>
                     <label for="tab-other">Autre client / curl</label>
                   </div>
 
                   <div class="tabs-content">
+                    <div class="tab-content" id="tc-copilot">
+                      <p style="margin: 0 0 0.4rem; font-size: 0.9rem; color: var(--text-muted);">
+                        Microsoft Copilot Studio supporte MCP nativement. La configuration
+                        se fait dans l'interface, sans fichier à éditer.
+                      </p>
+                      <ol class="ui-steps">
+                        <li>Dans <strong>Copilot Studio</strong>, ouvrir l'agent cible → onglet <strong>Tools</strong> → <strong>Add a tool</strong> → <strong>Model Context Protocol</strong>.</li>
+                        <li>Renseigner l'URL du serveur :
+                          <pre style="margin: 0.3rem 0 0;"><button class="copy-btn" data-copy="cfg-copilot-url"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>Copier</button><code id="cfg-copilot-url">https://mcp.leadalpes.fr/api/mcp</code></pre>
+                        </li>
+                        <li>Authentication : <strong>API Key</strong> en en-tête HTTP →
+                          <code>Header name: Authorization</code> ·
+                          <code>Header value: Bearer VOTRE_TOKEN_RECU_PAR_MAIL</code>.
+                          Stocker le jeton dans une <strong>Power Platform secret variable</strong>, jamais en clair.
+                        </li>
+                        <li><strong>Save</strong> puis <strong>Test</strong>. L'agent doit voir <strong>16 outils</strong> disponibles.</li>
+                      </ol>
+                      <p style="margin: 0.6rem 0 0; font-size: 0.88rem; color: var(--text-muted);">
+                        Pour un agent <strong>Info SIG Annecy</strong> prêt à coller (identité, instructions
+                        système, garde-fous citoyen, exemples adverses) :
+                        <a href="https://github.com/Damso74/annecy-sig-mcp/blob/main/examples/copilot-studio-instructions.md" target="_blank" rel="noopener">examples/copilot-studio-instructions.md ↗</a>.
+                      </p>
+                    </div>
+
                     <div class="tab-content" id="tc-cursor">
                       <p style="margin: 0 0 0.4rem; font-size: 0.9rem; color: var(--text-muted);">
                         Éditez <code>.cursor/mcp.json</code> à la racine du projet
