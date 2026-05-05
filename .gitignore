@@ -6,3 +6,12 @@ coverage/
 *.log
 .DS_Store
 .git-commit-msg.tmp
+
+# Notes d'arbitrage interne (DGS / DSI) non destinées au dépôt public.
+# Conservées localement pour usage interne. Ne pas committer.
+docs/strategy/00_synthese_executive_*.md
+docs/strategy/01_note_dgs_dsi_*.md
+docs/strategy/02_matrice_donnees_public_internal_restricted.md
+docs/strategy/_local/
+docs/internal-notes/
+docs/private/
