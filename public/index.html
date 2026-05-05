@@ -481,6 +481,9 @@
         max-width: 100%;
         -webkit-overflow-scrolling: touch;
       }
+      /* Réserver la place pour le bouton Copier afin qu'il ne chevauche pas
+         le texte du code (visible quand l'URL/JSON est court). */
+      pre:has(.copy-btn) { padding-right: 5.5rem; }
       pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
       .copy-btn {
         position: absolute;
