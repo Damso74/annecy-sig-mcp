@@ -15,7 +15,7 @@ import { createHash } from "node:crypto";
  * - Le **salt** est lu dans `PUBLIC_WORK_ID_SALT`. En son absence, on retombe
  *   sur un fallback stable mais explicitement non sensible — utile en local
  *   et dans les tests offline. En production Vercel, la variable **doit**
- *   être définie (cf. `docs/SECURITY.md` §10 et `README.md` §9.2).
+ *   être définie (cf. `SECURITY.md` §10 et `README.md` §8).
  * - L’identifiant n’est **pas** réversible côté client : reconstituer
  *   l’`OBJECTID` exigerait à la fois le salt secret et la connaissance
  *   de la plage d’`OBJECTID` du flux, ce qui sort du périmètre public.

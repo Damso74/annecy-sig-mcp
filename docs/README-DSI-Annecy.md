@@ -234,7 +234,7 @@ git commit -am "chore: sync registry from ArcGIS"
 
 Tout problème de sécurité (fuite de données, élévation de privilèges,
 contournement de l'allowlist) doit être signalé via le canal défini dans
-[`docs/SECURITY.md`](SECURITY.md). **Ne pas ouvrir d'issue publique.**
+[`SECURITY.md`](../SECURITY.md). **Ne pas ouvrir d'issue publique.**
 
 ---
 
@@ -245,7 +245,7 @@ contournement de l'allowlist) doit être signalé via le canal défini dans
 - **Code source** : <https://github.com/Damso74/annecy-sig-mcp>
 - **Documentation complète** : [`README.md`](../README.md)
 - **Catalogue de données** : [`docs/DATA_CATALOG_PUBLIC_REMOTE.md`](DATA_CATALOG_PUBLIC_REMOTE.md)
-- **Sécurité** : [`docs/SECURITY.md`](SECURITY.md)
+- **Sécurité** : [`SECURITY.md`](../SECURITY.md)
 - **Contrats techniques** : [`docs/TECHNICAL_CONTRACTS.md`](TECHNICAL_CONTRACTS.md)
 - **Recette terrain** : [`docs/RECETTE_TERRAIN.md`](RECETTE_TERRAIN.md)
 

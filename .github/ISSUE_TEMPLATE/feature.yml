@@ -1,0 +1,44 @@
+name: ✨ Demande de fonctionnalité
+description: Proposer un nouveau comportement ou un nouvel outil MCP.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Quel problème cette fonctionnalité résout-elle ?
+      description: |
+        Décrivez le besoin réel, pas la solution. « En tant que… j'ai besoin
+        de… parce que… ».
+      placeholder: |
+        En tant qu'agent ville, j'ai besoin de connaître le nombre d'horodateurs
+        en panne par quartier pour planifier les tournées de maintenance.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Solution envisagée
+      description: Si vous avez déjà une idée, partagez-la (sinon laissez vide).
+      placeholder: |
+        Ajouter un outil `count_layer_by_attribute` qui agrège un comptage par
+        valeur d'un champ catégoriel.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type de demande
+      options:
+        - Nouvel outil MCP
+        - Nouvelle couche au registre (utiliser plutôt « Demander une couche »)
+        - Amélioration d'un outil existant
+        - Documentation / DX
+        - Autre
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives envisagées
+      description: Ce que vous avez déjà essayé ou éliminé.

@@ -112,14 +112,14 @@ activer les tests réseau (désactivés par défaut).
 8. **Stdio MCP propre** : aucun message ne fuit sur stdout depuis le code (validé par `scripts/smoke-mcp.ts`).
 
 Détail complet, modèle de menace et procédure de divulgation responsable :
-[`docs/SECURITY.md`](docs/SECURITY.md).
+[`SECURITY.md`](SECURITY.md).
 
 ## 6. Documentation
 
 | Document | Contenu |
 | --- | --- |
 | [`docs/README-DSI-Annecy.md`](docs/README-DSI-Annecy.md) | Onboarding 1 page DSI Annecy (15 min, profils remote/local) |
-| [`docs/SECURITY.md`](docs/SECURITY.md) | Modèle de menace, allowlist, sanitation, divulgation |
+| [`SECURITY.md`](SECURITY.md) | Modèle de menace, allowlist, sanitation, rotation des secrets, divulgation |
 | [`docs/TECHNICAL_CONTRACTS.md`](docs/TECHNICAL_CONTRACTS.md) | Contrats Zod, `schemaVersion`, `usageProfiles`, architecture |
 | [`docs/PUBLIC_REMOTE_USAGE.md`](docs/PUBLIC_REMOTE_USAGE.md) | Mode d'emploi détaillé du serveur HTTP distant public |
 | [`docs/DATA_CATALOG_PUBLIC_REMOTE.md`](docs/DATA_CATALOG_PUBLIC_REMOTE.md) | Catalogue détaillé : services, couches, champs publics |
@@ -199,7 +199,7 @@ Un cron quotidien `check:registry` vérifie le drift ArcGIS.
 - **Bug, demande de fonctionnalité, nouvelle couche** :
   [GitHub Issues](https://github.com/Damso74/annecy-sig-mcp/issues)
 - **Faille de sécurité** : ne pas ouvrir d'issue publique. Voir
-  [`docs/SECURITY.md`](docs/SECURITY.md) pour la procédure.
+  [`SECURITY.md`](SECURITY.md) pour la procédure (GitHub Security Advisory privé ou mail).
 
 ## 11. Licence
 

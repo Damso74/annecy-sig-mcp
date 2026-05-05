@@ -135,6 +135,6 @@ vente, support technique général, etc.) qui détourneraient l’usage.
 
 - Mode d’emploi détaillé du remote : `docs/PUBLIC_REMOTE_USAGE.md`
 - Catalogue de données publiques : `docs/DATA_CATALOG_PUBLIC_REMOTE.md`
-- Sécurité et garde-fous : `docs/SECURITY.md`
+- Sécurité et garde-fous : `SECURITY.md` (racine)
 - Configuration Cursor remote : `examples/cursor-mcp-remote-config.json`
 
