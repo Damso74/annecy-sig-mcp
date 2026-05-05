@@ -4,58 +4,73 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
-    <title>annecy-sig-mcp — MCP SIG Annecy (lecture seule)</title>
+    <title>annecy-sig-mcp — Le SIG d'Annecy en langage naturel, via votre IA</title>
     <meta
       name="description"
-      content="Serveur MCP lecture seule pour les couches ArcGIS du SIG de la Ville d'Annecy. Transport HTTP public, mode strict allowlist, authentification Bearer."
+      content="Serveur MCP lecture seule qui rend les données publiques du portail SIG de la Ville d'Annecy interrogeables depuis n'importe quel assistant IA compatible MCP : Cursor, Claude Desktop, Continue, n8n, etc."
     />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b5fff'/%3E%3Ctext x='32' y='42' font-size='32' text-anchor='middle' fill='white' font-family='system-ui'%3E⌬%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b5fff'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='white' font-family='system-ui'%3E⌬%3C/text%3E%3C/svg%3E" />
     <style>
       :root {
         color-scheme: light dark;
-        --bg: #f8fafc;
+        --bg: #f7f9fc;
+        --bg-elevated: #ffffff;
         --surface: #ffffff;
-        --surface-2: #f1f5f9;
+        --surface-2: #eef2f8;
         --text: #0f172a;
         --text-muted: #475569;
+        --text-soft: #64748b;
         --border: #e2e8f0;
+        --border-strong: #cbd5e1;
         --accent: #0b5fff;
+        --accent-hover: #0a52df;
         --accent-soft: #e0eaff;
         --ok: #15803d;
-        --ok-soft: rgba(34, 197, 94, 0.15);
+        --ok-soft: rgba(34, 197, 94, 0.14);
         --warn: #b45309;
         --warn-soft: rgba(251, 191, 36, 0.18);
         --danger: #b91c1c;
-        --danger-soft: rgba(239, 68, 68, 0.15);
+        --danger-soft: rgba(239, 68, 68, 0.13);
         --code-bg: #0f172a;
         --code-text: #e2e8f0;
+        --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
         --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+        --shadow-lg: 0 4px 6px rgba(15, 23, 42, 0.04), 0 16px 40px rgba(15, 23, 42, 0.08);
         --radius: 12px;
+        --radius-sm: 8px;
+        --radius-lg: 16px;
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg: #0b1220;
+          --bg: #0a1020;
+          --bg-elevated: #0f172a;
           --surface: #111a2e;
           --surface-2: #0e1729;
           --text: #e2e8f0;
           --text-muted: #94a3b8;
+          --text-soft: #64748b;
           --border: #1e293b;
+          --border-strong: #334155;
           --accent: #60a5fa;
-          --accent-soft: rgba(96, 165, 250, 0.16);
+          --accent-hover: #93c5fd;
+          --accent-soft: rgba(96, 165, 250, 0.14);
           --ok: #4ade80;
-          --ok-soft: rgba(34, 197, 94, 0.18);
+          --ok-soft: rgba(34, 197, 94, 0.16);
           --warn: #fbbf24;
-          --warn-soft: rgba(251, 191, 36, 0.14);
+          --warn-soft: rgba(251, 191, 36, 0.12);
           --danger: #fca5a5;
-          --danger-soft: rgba(239, 68, 68, 0.16);
-          --code-bg: #0a1020;
+          --danger-soft: rgba(239, 68, 68, 0.14);
+          --code-bg: #050b18;
           --code-text: #e2e8f0;
+          --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
           --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.4);
+          --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.4), 0 16px 40px rgba(0, 0, 0, 0.6);
         }
       }
 
       * { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; scroll-padding-top: 70px; }
       body {
         font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         background: var(--bg);
@@ -65,184 +80,133 @@
         -webkit-font-smoothing: antialiased;
       }
       a { color: var(--accent); text-decoration: none; }
-      a:hover { text-decoration: underline; }
+      a:hover { color: var(--accent-hover); text-decoration: underline; }
+
       code, pre, kbd {
         font-family: ui-monospace, SFMono-Regular, "Menlo", Consolas, monospace;
-        font-size: 0.92em;
+        font-size: 0.9em;
       }
       :not(pre) > code {
         background: var(--surface-2);
         padding: 0.12em 0.4em;
         border-radius: 4px;
         border: 1px solid var(--border);
+        font-size: 0.88em;
+        color: var(--text);
       }
 
       .container {
-        max-width: 1024px;
+        max-width: 1100px;
         margin: 0 auto;
         padding: 0 1.5rem;
       }
 
-      /* --- Top bar --- */
+      /* ========= TOPBAR ========= */
       header.topbar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        background: rgba(255, 255, 255, 0.85);
         border-bottom: 1px solid var(--border);
-        background: var(--surface);
+      }
+      @media (prefers-color-scheme: dark) {
+        header.topbar { background: rgba(15, 23, 42, 0.85); }
       }
       .topbar-inner {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0.85rem 0;
+        padding: 0.75rem 0;
         gap: 1rem;
       }
-      .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 600; }
+      .brand { display: flex; align-items: center; gap: 0.55rem; font-weight: 600; font-size: 0.96rem; }
       .brand-mark {
-        width: 28px; height: 28px;
+        width: 30px; height: 30px;
         background: var(--accent);
         color: white;
-        border-radius: 7px;
+        border-radius: 8px;
         display: grid; place-items: center;
-        font-size: 1.15rem;
+        font-size: 1.2rem;
+        font-weight: 700;
       }
-      .top-links { display: flex; gap: 1.2rem; font-size: 0.94rem; }
+      .top-links { display: flex; gap: 1.4rem; font-size: 0.92rem; }
       .top-links a { color: var(--text-muted); }
+      .top-links a:hover { color: var(--accent); }
 
-      /* --- Hero --- */
+      /* ========= HERO ========= */
       .hero {
-        padding: 3.5rem 0 2.5rem;
-        border-bottom: 1px solid var(--border);
+        padding: 5rem 0 4rem;
+        background:
+          radial-gradient(1200px 400px at 50% -100px, var(--accent-soft) 0%, transparent 70%),
+          var(--bg);
+      }
+      .hero-eyebrow {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--accent);
+        background: var(--accent-soft);
+        padding: 0.32rem 0.75rem;
+        border-radius: 999px;
+        margin-bottom: 1.2rem;
       }
       .hero h1 {
-        font-size: clamp(1.75rem, 4vw, 2.6rem);
-        margin: 0 0 0.6rem;
-        letter-spacing: -0.02em;
-        line-height: 1.15;
+        font-size: clamp(1.9rem, 4.5vw, 3rem);
+        margin: 0 0 1rem;
+        letter-spacing: -0.025em;
+        line-height: 1.1;
+        max-width: 22ch;
       }
       .hero p.lead {
-        margin: 0 0 1.4rem;
+        margin: 0 0 2rem;
         color: var(--text-muted);
-        font-size: 1.08rem;
-        max-width: 62ch;
+        font-size: clamp(1rem, 1.4vw, 1.15rem);
+        max-width: 60ch;
       }
-      .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.2rem; }
-      .badge {
-        display: inline-flex; align-items: center; gap: 0.4rem;
-        font-size: 0.8rem;
-        font-weight: 600;
-        padding: 0.25rem 0.65rem;
-        border-radius: 999px;
-        border: 1px solid transparent;
-      }
-      .badge .dot {
-        width: 7px; height: 7px; border-radius: 50%;
-        background: currentColor;
-      }
-      .badge--ok { background: var(--ok-soft); color: var(--ok); }
-      .badge--info { background: var(--accent-soft); color: var(--accent); }
-      .badge--neutral { background: var(--surface-2); color: var(--text-muted); border-color: var(--border); }
+      .hero p.lead strong { color: var(--text); }
 
-      .hero-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+      .hero-actions { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-bottom: 2rem; }
       .btn {
-        display: inline-flex; align-items: center; gap: 0.45rem;
-        padding: 0.55rem 1rem;
-        border-radius: 8px;
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 0.7rem 1.2rem;
+        border-radius: var(--radius-sm);
         font-weight: 500;
         font-size: 0.95rem;
-        border: 1px solid var(--border);
+        border: 1px solid var(--border-strong);
         background: var(--surface);
         color: var(--text);
         cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: inherit;
       }
-      .btn:hover { text-decoration: none; border-color: var(--accent); }
+      .btn:hover { text-decoration: none; border-color: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
       .btn--primary {
         background: var(--accent);
         color: white;
         border-color: var(--accent);
       }
-      .btn--primary:hover { filter: brightness(1.08); }
+      .btn--primary:hover { background: var(--accent-hover); color: white; border-color: var(--accent-hover); }
 
-      /* --- Sections --- */
-      section { padding: 3rem 0; border-bottom: 1px solid var(--border); }
-      section:last-of-type { border-bottom: none; }
-      h2 { font-size: 1.5rem; margin: 0 0 1.2rem; letter-spacing: -0.01em; }
-      h3 { font-size: 1.05rem; margin: 0 0 0.4rem; }
-
-      /* --- Code block --- */
-      pre {
-        background: var(--code-bg);
-        color: var(--code-text);
-        padding: 1.1rem 1.2rem;
-        border-radius: var(--radius);
-        overflow-x: auto;
+      .hero-meta {
+        display: flex; flex-wrap: wrap; gap: 0.6rem 1.4rem;
         font-size: 0.88rem;
-        line-height: 1.55;
-        margin: 0.8rem 0;
-        position: relative;
-      }
-      pre code { background: none; border: none; padding: 0; color: inherit; }
-      .copy-btn {
-        position: absolute;
-        top: 0.55rem; right: 0.55rem;
-        background: rgba(255, 255, 255, 0.08);
-        color: #cbd5e1;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        padding: 0.2rem 0.55rem;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        cursor: pointer;
-        font-family: inherit;
-      }
-      .copy-btn:hover { background: rgba(255, 255, 255, 0.16); }
-
-      /* --- Cards / grids --- */
-      .grid {
-        display: grid;
-        gap: 1rem;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      }
-      .card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 1rem 1.1rem;
-        box-shadow: var(--shadow);
-      }
-      .card h3 { display: flex; align-items: center; gap: 0.45rem; }
-      .card .meta {
-        font-size: 0.82rem;
         color: var(--text-muted);
       }
-      .card code {
-        background: var(--surface-2);
-        font-size: 0.82rem;
-      }
+      .hero-meta strong { color: var(--text); font-weight: 600; }
 
-      /* --- Tools list --- */
-      .tools-grid {
-        display: grid;
-        gap: 0.8rem;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      }
-      .tool {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 0.8rem 1rem;
-      }
-      .tool code { font-weight: 600; color: var(--accent); background: var(--accent-soft); border: none; }
-      .tool p { margin: 0.35rem 0 0; font-size: 0.9rem; color: var(--text-muted); }
-
-      /* --- Health pill --- */
       .health-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.3rem 0.7rem;
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 0.32rem 0.7rem;
         border-radius: 999px;
-        background: var(--surface-2);
+        background: var(--surface);
         border: 1px solid var(--border);
         font-size: 0.82rem;
         color: var(--text-muted);
+        font-weight: 500;
       }
       .health-pill .dot {
         width: 8px; height: 8px; border-radius: 50%;
@@ -251,58 +215,370 @@
       .health-pill--ok .dot { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
       .health-pill--err .dot { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
 
-      /* --- Lists --- */
-      ul.clean { padding-left: 1.1rem; margin: 0.4rem 0; }
-      ul.clean li { margin: 0.25rem 0; }
-
-      /* --- Footer --- */
-      footer.bottom {
-        padding: 2rem 0 3rem;
-        font-size: 0.85rem;
+      /* ========= SECTIONS ========= */
+      section { padding: 4rem 0; }
+      section.alt { background: var(--bg-elevated); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+      section h2 {
+        font-size: clamp(1.4rem, 2.5vw, 1.75rem);
+        margin: 0 0 0.5rem;
+        letter-spacing: -0.015em;
+      }
+      section .section-lead {
         color: var(--text-muted);
-        text-align: center;
+        margin: 0 0 2rem;
+        font-size: 1.02rem;
+        max-width: 60ch;
       }
-      footer.bottom .links {
-        display: flex; justify-content: center; gap: 1.2rem; flex-wrap: wrap;
-        margin-bottom: 0.6rem;
-      }
+      section h3 { font-size: 1.05rem; margin: 0 0 0.4rem; }
 
-      /* --- Steps --- */
-      .step {
-        display: flex; gap: 1rem;
-        padding: 1rem 0;
-        border-top: 1px solid var(--border);
+      /* ========= USE CASES (audience cards) ========= */
+      .audience-grid {
+        display: grid;
+        gap: 1.2rem;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       }
-      .step:first-child { border-top: none; padding-top: 0; }
+      .audience {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        box-shadow: var(--shadow-sm);
+        position: relative;
+        overflow: hidden;
+        transition: box-shadow 0.2s, transform 0.2s;
+      }
+      .audience:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+      .audience-icon {
+        width: 44px; height: 44px;
+        border-radius: 10px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        display: grid; place-items: center;
+        font-size: 1.4rem;
+        margin-bottom: 1rem;
+      }
+      .audience h3 { margin: 0 0 0.4rem; font-size: 1.1rem; }
+      .audience .role { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); font-weight: 600; margin-bottom: 0.6rem; }
+      .audience p { margin: 0 0 1rem; color: var(--text-muted); font-size: 0.95rem; }
+      .audience .example {
+        background: var(--surface-2);
+        border-left: 3px solid var(--accent);
+        padding: 0.7rem 0.9rem;
+        font-size: 0.88rem;
+        font-style: italic;
+        color: var(--text);
+        border-radius: 0 6px 6px 0;
+      }
+      .audience .example::before { content: "💬 "; font-style: normal; }
+
+      /* ========= WHY (3 col benefits) ========= */
+      .why-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-top: 1.5rem;
+      }
+      .why { padding: 1rem 1.2rem; border-left: 3px solid var(--accent); background: var(--surface); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+      .why h4 { margin: 0 0 0.3rem; font-size: 1rem; }
+      .why p { margin: 0; color: var(--text-muted); font-size: 0.92rem; }
+
+      /* ========= STEPS ========= */
+      .steps { display: grid; gap: 1.2rem; margin-top: 1rem; }
+      .step {
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        gap: 1.1rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.2rem 1.3rem;
+        box-shadow: var(--shadow-sm);
+      }
       .step-num {
-        flex: 0 0 32px;
-        width: 32px; height: 32px;
+        width: 36px; height: 36px;
         border-radius: 50%;
         background: var(--accent);
         color: white;
         display: grid; place-items: center;
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
       }
-      .step-body { flex: 1; min-width: 0; }
-      .step-body h3 { margin-top: 0.15rem; }
+      .step-body h3 { margin: 0.15rem 0 0.4rem; font-size: 1.05rem; }
+      .step-body p { margin: 0 0 0.6rem; color: var(--text-muted); font-size: 0.94rem; }
+      .step-body p:last-child { margin-bottom: 0; }
 
-      /* --- Definition list for security --- */
-      .secdl { display: grid; gap: 0.7rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+      /* ========= TABS (CSS pure, radio-trick) ========= */
+      .tabs { margin-top: 1rem; }
+      .tabs input[type="radio"] { display: none; }
+      .tabs-labels {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0;
+      }
+      .tabs-labels label {
+        padding: 0.5rem 1rem;
+        font-size: 0.92rem;
+        font-weight: 500;
+        cursor: pointer;
+        color: var(--text-muted);
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        transition: all 0.15s;
+      }
+      .tabs-labels label:hover { color: var(--accent); }
+      .tab-content { display: none; }
+      #tab-cursor:checked ~ .tabs-content #tc-cursor,
+      #tab-claude:checked ~ .tabs-content #tc-claude,
+      #tab-other:checked ~ .tabs-content #tc-other { display: block; }
+      #tab-cursor:checked ~ .tabs-labels label[for="tab-cursor"],
+      #tab-claude:checked ~ .tabs-labels label[for="tab-claude"],
+      #tab-other:checked ~ .tabs-labels label[for="tab-other"] {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+        font-weight: 600;
+      }
+
+      /* ========= CODE BLOCKS ========= */
+      pre {
+        background: var(--code-bg);
+        color: var(--code-text);
+        padding: 1.1rem 1.2rem;
+        border-radius: var(--radius);
+        overflow-x: auto;
+        font-size: 0.86rem;
+        line-height: 1.6;
+        margin: 0.8rem 0;
+        position: relative;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+      .copy-btn {
+        position: absolute;
+        top: 0.5rem; right: 0.5rem;
+        background: rgba(255, 255, 255, 0.08);
+        color: #cbd5e1;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.74rem;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background 0.15s;
+      }
+      .copy-btn:hover { background: rgba(255, 255, 255, 0.16); }
+      .copy-btn.copied { background: var(--ok); color: white; border-color: var(--ok); }
+
+      /* ========= TOOLS ========= */
+      .tools-section { margin-top: 1.5rem; }
+      .tools-section h3 {
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-soft);
+        font-weight: 600;
+        margin: 1.3rem 0 0.7rem;
+      }
+      .tools-grid {
+        display: grid;
+        gap: 0.7rem;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+      .tool {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 0.85rem 1rem;
+        transition: border-color 0.15s;
+      }
+      .tool:hover { border-color: var(--accent); }
+      .tool code {
+        font-weight: 600;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border: none;
+        padding: 0.18em 0.5em;
+        font-size: 0.85rem;
+      }
+      .tool p { margin: 0.4rem 0 0; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; }
+
+      /* ========= LAYERS (details collapsible) ========= */
+      .layers-note {
+        background: var(--accent-soft);
+        border-left: 4px solid var(--accent);
+        padding: 0.9rem 1.1rem;
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+        margin-bottom: 1.5rem;
+        font-size: 0.94rem;
+      }
+      .layers-note strong { color: var(--accent); }
+
+      details.service {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 0.8rem;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+      }
+      details.service > summary {
+        cursor: pointer;
+        padding: 1rem 1.2rem;
+        font-weight: 600;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      details.service > summary::-webkit-details-marker { display: none; }
+      details.service > summary::after {
+        content: "▾";
+        color: var(--text-muted);
+        transition: transform 0.2s;
+      }
+      details.service[open] > summary::after { transform: rotate(180deg); }
+      details.service > summary:hover { background: var(--surface-2); }
+      details.service .summary-meta { font-size: 0.84rem; color: var(--text-muted); font-weight: 400; margin-left: auto; padding-right: 0.8rem; }
+
+      .layer-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+        border-top: 1px solid var(--border);
+      }
+      .layer-table th, .layer-table td {
+        text-align: left;
+        padding: 0.6rem 1.2rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .layer-table th {
+        background: var(--surface-2);
+        font-weight: 600;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-soft);
+      }
+      .layer-table tbody tr:last-child td { border-bottom: none; }
+      .layer-table tbody tr:hover { background: var(--surface-2); }
+      .layer-table .lid { font-family: ui-monospace, monospace; color: var(--text-muted); font-size: 0.85rem; }
+      .pill {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .pill--public { background: var(--ok-soft); color: var(--ok); }
+      .pill--internal { background: var(--warn-soft); color: var(--warn); }
+      .pill--filtered { background: var(--accent-soft); color: var(--accent); }
+
+      /* ========= SECURITY ========= */
+      .secdl { display: grid; gap: 0.7rem; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); margin-top: 1rem; }
       .secdl > div {
         background: var(--surface);
         border-left: 3px solid var(--ok);
-        border-radius: 6px;
-        padding: 0.7rem 0.9rem;
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+        padding: 0.8rem 1rem;
       }
       .secdl > div.no { border-left-color: var(--danger); }
-      .secdl strong { display: block; margin-bottom: 0.15rem; }
-      .secdl small { color: var(--text-muted); }
+      .secdl strong { display: block; margin-bottom: 0.2rem; }
+      .secdl small { color: var(--text-muted); font-size: 0.86rem; }
 
-      @media (max-width: 600px) {
+      /* ========= FAQ ========= */
+      details.faq {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        margin-bottom: 0.6rem;
+        overflow: hidden;
+      }
+      details.faq > summary {
+        cursor: pointer;
+        padding: 0.9rem 1.1rem;
+        font-weight: 600;
+        font-size: 0.96rem;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      details.faq > summary::-webkit-details-marker { display: none; }
+      details.faq > summary::after { content: "+"; font-weight: 400; font-size: 1.3rem; color: var(--text-muted); }
+      details.faq[open] > summary::after { content: "−"; }
+      details.faq > div {
+        padding: 0 1.1rem 1rem;
+        color: var(--text-muted);
+        font-size: 0.94rem;
+      }
+      details.faq > div p { margin: 0 0 0.6rem; }
+      details.faq > div p:last-child { margin-bottom: 0; }
+
+      /* ========= CONTACT ========= */
+      .contact-card {
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+        color: white;
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        text-align: center;
+        box-shadow: var(--shadow-lg);
+      }
+      .contact-card h2 { margin: 0 0 0.5rem; color: white; font-size: 1.5rem; }
+      .contact-card p { margin: 0 0 1.3rem; color: rgba(255, 255, 255, 0.9); }
+      .contact-card .btn--primary {
+        background: white;
+        color: var(--accent);
+        border-color: white;
+        font-weight: 600;
+      }
+      .contact-card .btn--primary:hover { background: var(--accent-soft); color: var(--accent); }
+      .contact-card .btn { background: rgba(255, 255, 255, 0.12); color: white; border-color: rgba(255, 255, 255, 0.4); }
+      .contact-card .btn:hover { background: rgba(255, 255, 255, 0.2); border-color: white; }
+
+      /* ========= FOOTER ========= */
+      footer.bottom {
+        padding: 2.5rem 0 3rem;
+        font-size: 0.86rem;
+        color: var(--text-muted);
+        background: var(--bg-elevated);
+        border-top: 1px solid var(--border);
+      }
+      footer.bottom .footer-grid {
+        display: grid;
+        gap: 2rem;
+        grid-template-columns: 1.5fr 1fr 1fr 1fr;
+        margin-bottom: 2rem;
+      }
+      footer.bottom .footer-col h4 {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text);
+        margin: 0 0 0.7rem;
+        font-weight: 600;
+      }
+      footer.bottom .footer-col ul { list-style: none; padding: 0; margin: 0; }
+      footer.bottom .footer-col li { margin: 0.3rem 0; }
+      footer.bottom .footer-col a { color: var(--text-muted); }
+      footer.bottom .footer-col a:hover { color: var(--accent); }
+      footer.bottom .footer-bottom {
+        padding-top: 1.4rem;
+        border-top: 1px solid var(--border);
+        text-align: center;
+      }
+
+      @media (max-width: 760px) {
         .top-links { display: none; }
-        .hero { padding: 2rem 0 1.5rem; }
-        section { padding: 2rem 0; }
+        .hero { padding: 3rem 0 2.5rem; }
+        section { padding: 3rem 0; }
+        footer.bottom .footer-grid { grid-template-columns: 1fr 1fr; }
+        .layer-table th:nth-child(3),
+        .layer-table td:nth-child(3) { display: none; }
       }
     </style>
   </head>
@@ -314,323 +590,520 @@
           <span>annecy-sig-mcp</span>
         </a>
         <nav class="top-links" aria-label="Navigation principale">
+          <a href="#audiences">Pour qui ?</a>
           <a href="#start">Démarrer</a>
           <a href="#tools">Outils</a>
           <a href="#layers">Couches</a>
-          <a href="#security">Sécurité</a>
+          <a href="#faq">FAQ</a>
+          <a href="#contact">Contact</a>
           <a href="https://github.com/Damso74/annecy-sig-mcp" target="_blank" rel="noopener">GitHub ↗</a>
         </nav>
       </div>
     </header>
 
     <main>
+      <!-- ============ HERO ============ -->
       <section class="hero">
         <div class="container">
-          <div class="badges">
-            <span class="badge badge--ok"><span class="dot"></span>Public-only</span>
-            <span class="badge badge--info">Lecture seule</span>
-            <span class="badge badge--neutral">MCP Streamable HTTP</span>
-            <span class="badge badge--neutral" id="version-badge">v—</span>
-          </div>
-          <h1>Le SIG d'Annecy, branché à votre IA</h1>
+          <span class="hero-eyebrow">⌬ MCP officiel · Ville d'Annecy</span>
+          <h1>Le SIG d'Annecy en langage naturel.</h1>
           <p class="lead">
-            Serveur <strong>MCP</strong> (Model Context Protocol) qui expose les couches ArcGIS du
-            portail SIG public de la Ville d'Annecy à un assistant IA — équipements,
-            mobilité, travaux. Allowlist stricte, jamais d'écriture, jamais de PII brute.
+            <strong>annecy-sig-mcp</strong> est un serveur MCP (Model Context Protocol)
+            qui rend les <strong>données géographiques publiques</strong> de la
+            Ville d'Annecy interrogeables depuis n'importe quel assistant IA
+            compatible : Cursor, Claude Desktop, Continue, n8n, ChatGPT MCP…
+            Lecture seule, allowlist stricte, jamais d'écriture vers le SIG.
           </p>
           <div class="hero-actions">
-            <a href="#start" class="btn btn--primary">Démarrer en 30 s →</a>
-            <a href="/api/health" class="btn" target="_blank" rel="noopener">/api/health</a>
-            <a href="https://github.com/Damso74/annecy-sig-mcp" class="btn" target="_blank" rel="noopener">GitHub ↗</a>
+            <a href="mailto:damien.credoz@annecy.fr?subject=Demande%20d'acc%C3%A8s%20annecy-sig-mcp&body=Bonjour%2C%0A%0AJe%20souhaite%20utiliser%20le%20serveur%20annecy-sig-mcp.%0A%0AContexte%20%2F%20cas%20d'usage%20%3A%20%0A%0AOrganisation%20%2F%20fonction%20%3A%20%0A%0AClient%20MCP%20envisag%C3%A9%20(Cursor%2C%20Claude%20Desktop%2C%20autre)%20%3A%20%0A%0AMerci."
+               class="btn btn--primary">
+              ✉ Demander un accès
+            </a>
+            <a href="#start" class="btn">Comment ça marche →</a>
+            <a href="https://github.com/Damso74/annecy-sig-mcp" class="btn" target="_blank" rel="noopener">⭐ GitHub</a>
           </div>
-          <p style="margin-top: 1.4rem;">
+          <div class="hero-meta">
             <span class="health-pill" id="health-pill">
               <span class="dot"></span>
               <span id="health-text">Vérification de l'état du service…</span>
             </span>
-          </p>
+            <span><strong>28</strong> couches SIG</span>
+            <span><strong>16</strong> outils MCP</span>
+            <span>🔓 Open source · MIT</span>
+          </div>
         </div>
       </section>
 
-      <section id="start">
+      <!-- ============ AUDIENCES ============ -->
+      <section id="audiences" class="alt">
         <div class="container">
-          <h2>Démarrer en 30 secondes</h2>
-          <p style="color: var(--text-muted); margin-top: -0.5rem;">
-            Pour Cursor, Claude Desktop, Copilot Studio ou tout client MCP HTTP.
+          <h2>Pour qui ?</h2>
+          <p class="section-lead">
+            Pas besoin d'être développeur. Le serveur est ouvert à toute personne
+            ou organisation qui veut conversabiliser le SIG d'Annecy via une IA.
           </p>
 
-          <div class="step">
-            <div class="step-num">1</div>
-            <div class="step-body">
-              <h3>Récupérer un jeton Bearer</h3>
-              <p style="margin: 0; color: var(--text-muted);">
-                Le jeton public lecture seule est partagé sur demande à l'opérateur du serveur.
-                Conservez-le en variable d'environnement, ne le committez pas.
-              </p>
+          <div class="audience-grid">
+            <article class="audience">
+              <div class="audience-icon" aria-hidden="true">🧑‍🤝‍🧑</div>
+              <div class="role">Citoyen·ne · Curieux</div>
+              <h3>Trouvez ce que vous cherchez en posant la question</h3>
+              <p>WC publics, parkings, bornes électriques, équipements sport… interrogez le SIG comme vous parleriez à un ami.</p>
+              <div class="example">Où sont les WC publics ouverts maintenant à 500 m de la mairie ?</div>
+            </article>
+
+            <article class="audience">
+              <div class="audience-icon" aria-hidden="true">🏛️</div>
+              <div class="role">Agent Ville · DSI · Élu·e</div>
+              <h3>Pilotez et auditez vos données SIG sans coder</h3>
+              <p>Inventaires, qualité, briefs open data, dashboards internes — tout depuis votre IA, sans ouvrir ArcGIS.</p>
+              <div class="example">Génère le rapport qualité de la couche bornes électriques au format markdown.</div>
+            </article>
+
+            <article class="audience">
+              <div class="audience-icon" aria-hidden="true">💻</div>
+              <div class="role">Développeur·euse · Intégrateur·trice</div>
+              <h3>Branchez votre agent IA aux données Annecy en 5 min</h3>
+              <p>Endpoint HTTP MCP standard, sortie JSON typée, schémas Zod stables, contrats versionnés. Aucun ETL à écrire.</p>
+              <div class="example">Endpoint : <code>https://mcp.leadalpes.fr/api/mcp</code></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ WHY ============ -->
+      <section>
+        <div class="container">
+          <h2>Pourquoi un MCP ? Le portail SIG existe déjà.</h2>
+          <p class="section-lead">
+            Toutes les données exposées par ce MCP sont <strong>déjà publiques</strong>
+            sur <a href="https://portailsig.annecy.fr/" target="_blank" rel="noopener">portailsig.annecy.fr</a>.
+            Le MCP n'ajoute aucune nouvelle donnée — il les rend simplement
+            <strong>conversables par une IA</strong>.
+          </p>
+
+          <div class="why-grid">
+            <div class="why">
+              <h4>🗣️ Langage naturel</h4>
+              <p>Plus besoin de connaître les services ArcGIS, ni la syntaxe <code>where</code>, ni les coordonnées Lambert-93. Vous demandez, l'IA traduit.</p>
+            </div>
+            <div class="why">
+              <h4>🤖 Intégration IA standard</h4>
+              <p>Compatible avec tout client MCP : Cursor, Claude Desktop, Continue, n8n, agents custom. Un seul endpoint, n+1 IA branchées.</p>
+            </div>
+            <div class="why">
+              <h4>📦 Sortie structurée</h4>
+              <p>Réponses JSON normalisées et typées (Zod), pas de JSON ArcGIS brut. Champs sensibles filtrés systématiquement.</p>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div class="step">
-            <div class="step-num">2</div>
-            <div class="step-body">
-              <h3>Ajouter le serveur dans Cursor</h3>
-              <p style="margin: 0; color: var(--text-muted);">
-                Éditez <code>.cursor/mcp.json</code> à la racine du projet (ou
-                <code>~/.cursor/mcp.json</code> pour usage global).
-              </p>
-              <pre><button class="copy-btn" data-copy="cursor-config">Copier</button><code id="cursor-config">{
+      <!-- ============ START ============ -->
+      <section id="start" class="alt">
+        <div class="container">
+          <h2>Démarrer en 3 étapes</h2>
+          <p class="section-lead">Compter ~10 minutes au total : le temps d'obtenir un jeton et de configurer votre client.</p>
+
+          <div class="steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-body">
+                <h3>Demander un jeton d'accès (gratuit)</h3>
+                <p>Envoyez un mail court précisant votre cas d'usage. La réponse contient le jeton Bearer à utiliser dans la config.</p>
+                <p>
+                  <a href="mailto:damien.credoz@annecy.fr?subject=Demande%20d'acc%C3%A8s%20annecy-sig-mcp&body=Bonjour%2C%0A%0AJe%20souhaite%20utiliser%20le%20serveur%20annecy-sig-mcp.%0A%0AContexte%20%2F%20cas%20d'usage%20%3A%20%0A%0AOrganisation%20%2F%20fonction%20%3A%20%0A%0AClient%20MCP%20envisag%C3%A9%20(Cursor%2C%20Claude%20Desktop%2C%20autre)%20%3A%20%0A%0AMerci."
+                     class="btn btn--primary">
+                    ✉ damien.credoz@annecy.fr
+                  </a>
+                </p>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-body">
+                <h3>Configurer votre client MCP</h3>
+                <p>Copiez la config qui correspond à votre client. Le serveur est compatible avec tout client MCP HTTP standard.</p>
+
+                <div class="tabs">
+                  <input type="radio" name="client" id="tab-cursor" checked />
+                  <input type="radio" name="client" id="tab-claude" />
+                  <input type="radio" name="client" id="tab-other" />
+
+                  <div class="tabs-labels">
+                    <label for="tab-cursor">Cursor</label>
+                    <label for="tab-claude">Claude Desktop</label>
+                    <label for="tab-other">Autre client / curl</label>
+                  </div>
+
+                  <div class="tabs-content">
+                    <div class="tab-content" id="tc-cursor">
+                      <p style="margin: 0 0 0.4rem; font-size: 0.9rem; color: var(--text-muted);">
+                        Éditez <code>.cursor/mcp.json</code> à la racine du projet
+                        (ou <code>~/.cursor/mcp.json</code> pour usage global) :
+                      </p>
+                      <pre><button class="copy-btn" data-copy="cfg-cursor">Copier</button><code id="cfg-cursor">{
   "mcpServers": {
-    "annecy-sig-remote": {
+    "annecy-sig": {
       "url": "https://mcp.leadalpes.fr/api/mcp",
       "headers": {
-        "Authorization": "Bearer &lt;MCP_PUBLIC_READ_TOKEN&gt;"
+        "Authorization": "Bearer VOTRE_TOKEN_RECU_PAR_MAIL"
       }
     }
   }
 }</code></pre>
-            </div>
-          </div>
+                      <p style="margin: 0.5rem 0 0; font-size: 0.88rem; color: var(--text-muted);">
+                        Puis <code>Settings → MCP</code> dans Cursor : activez
+                        <code>annecy-sig</code>. Vous devez voir <strong>16 outils</strong>.
+                      </p>
+                    </div>
 
-          <div class="step">
-            <div class="step-num">3</div>
-            <div class="step-body">
-              <h3>Reconnecter et utiliser</h3>
-              <p style="margin: 0; color: var(--text-muted);">
-                Dans Cursor Settings → MCP, cliquez sur le toggle pour activer le serveur.
-                Posez ensuite une question à l'assistant, par exemple :
-              </p>
-              <pre><code>« Liste les bornes de recharge véhicules électriques d'Annecy »
-« Y a-t-il des travaux en cours à 200 m de l'Hôtel de Ville ? »
-« Combien de places PMR près de la mairie d'Annecy-le-Vieux ? »</code></pre>
+                    <div class="tab-content" id="tc-claude">
+                      <p style="margin: 0 0 0.4rem; font-size: 0.9rem; color: var(--text-muted);">
+                        Éditez le fichier de config Claude Desktop
+                        (<code>~/Library/Application Support/Claude/claude_desktop_config.json</code> sur macOS,
+                        <code>%APPDATA%\Claude\claude_desktop_config.json</code> sur Windows) :
+                      </p>
+                      <pre><button class="copy-btn" data-copy="cfg-claude">Copier</button><code id="cfg-claude">{
+  "mcpServers": {
+    "annecy-sig": {
+      "url": "https://mcp.leadalpes.fr/api/mcp",
+      "headers": {
+        "Authorization": "Bearer VOTRE_TOKEN_RECU_PAR_MAIL"
+      }
+    }
+  }
+}</code></pre>
+                      <p style="margin: 0.5rem 0 0; font-size: 0.88rem; color: var(--text-muted);">
+                        Redémarrez Claude Desktop. Vérifiez l'icône MCP en bas du chat.
+                      </p>
+                    </div>
+
+                    <div class="tab-content" id="tc-other">
+                      <p style="margin: 0 0 0.4rem; font-size: 0.9rem; color: var(--text-muted);">
+                        Tout client MCP Streamable HTTP fonctionne (Continue, n8n,
+                        agent custom…). Test rapide avec <code>curl</code> pour lister les outils :
+                      </p>
+                      <pre><button class="copy-btn" data-copy="cfg-curl">Copier</button><code id="cfg-curl">curl -sS https://mcp.leadalpes.fr/api/mcp \
+  -H "Authorization: Bearer VOTRE_TOKEN" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "MCP-Protocol-Version: 2024-11-05" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'</code></pre>
+                      <p style="margin: 0.5rem 0 0; font-size: 0.88rem; color: var(--text-muted);">
+                        Devrait retourner les <strong>16 outils publics</strong>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-body">
+                <h3>Posez vos questions</h3>
+                <p>Quelques exemples concrets à essayer dès la première session :</p>
+                <pre><code>« Liste les bornes de recharge véhicules électriques d'Annecy. »
+« Combien de places PMR à 300 m de la place du Pâquier ? »
+« Y a-t-il des travaux en cours à proximité de l'Hôtel de Ville ? »
+« Génère un brief open data pour la couche WC publics. »
+« Donne-moi un rapport qualité de la couche stations vélonecy. »</code></pre>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
+      <!-- ============ TOOLS ============ -->
       <section id="tools">
         <div class="container">
           <h2>16 outils MCP exposés</h2>
-          <p style="color: var(--text-muted); margin-top: -0.5rem;">
-            Tous en lecture seule, sortie JSON structurée, schémas typés (Zod) et validés.
+          <p class="section-lead">
+            Tous en lecture seule, sortie JSON structurée, schémas typés (Zod) versionnés
+            <code>schemaVersion: *.v1</code>.
           </p>
 
-          <h3 style="margin-top: 1.5rem;">Découverte du catalogue</h3>
-          <div class="tools-grid">
-            <div class="tool">
-              <code>list_services</code>
-              <p>Inventaire des services ArcGIS allowlistés (équipements, mobilité, travaux).</p>
-            </div>
-            <div class="tool">
-              <code>list_layers</code>
-              <p>Couches d'un service avec compteurs et niveau d'accès (public/internal).</p>
-            </div>
-            <div class="tool">
-              <code>describe_layer</code>
-              <p>Schéma détaillé d'une couche — champs publics, géométrie, sémantique.</p>
-            </div>
-            <div class="tool">
-              <code>recommend_layers_for_intent</code>
-              <p>Découverte par intention citoyenne (matching lexical déterministe FR).</p>
+          <div class="tools-section">
+            <h3>Découverte du catalogue</h3>
+            <div class="tools-grid">
+              <div class="tool"><code>list_services</code><p>Inventaire des services ArcGIS allowlistés (équipements, mobilité, travaux).</p></div>
+              <div class="tool"><code>list_layers</code><p>Couches d'un service avec compteurs et niveau d'accès (public / internal).</p></div>
+              <div class="tool"><code>describe_layer</code><p>Schéma détaillé d'une couche : champs publics, géométrie, sémantique.</p></div>
+              <div class="tool"><code>recommend_layers_for_intent</code><p>Découverte par intention citoyenne (matching lexical déterministe en français).</p></div>
             </div>
           </div>
 
-          <h3 style="margin-top: 1.5rem;">Requêtes spatiales et attributaires</h3>
-          <div class="tools-grid">
-            <div class="tool">
-              <code>query_layer</code>
-              <p>Filtrage attributaire (ArcGIS where), pagination, champs validés contre <code>f=pjson</code>.</p>
-            </div>
-            <div class="tool">
-              <code>search_nearby</code>
-              <p>Recherche spatiale par lat/lng/rayon — Lambert-93 ou WGS-84 transparents.</p>
-            </div>
-            <div class="tool">
-              <code>count_layer</code>
-              <p>Comptage rapide avec where optionnel (utile pour dashboards).</p>
-            </div>
-            <div class="tool">
-              <code>detect_data_quality_issues</code>
-              <p>Heuristiques qualité : champs vides, doublons, géométries manquantes.</p>
+          <div class="tools-section">
+            <h3>Requêtes spatiales et attributaires</h3>
+            <div class="tools-grid">
+              <div class="tool"><code>query_layer</code><p>Filtrage attributaire (ArcGIS <code>where</code>), pagination, champs validés contre <code>f=pjson</code>.</p></div>
+              <div class="tool"><code>search_nearby</code><p>Recherche spatiale par lat/lng/rayon — Lambert-93 ou WGS-84 transparents.</p></div>
+              <div class="tool"><code>count_layer</code><p>Comptage rapide avec <code>where</code> optionnel (utile pour dashboards).</p></div>
+              <div class="tool"><code>detect_data_quality_issues</code><p>Heuristiques qualité : champs vides, doublons, géométries manquantes.</p></div>
             </div>
           </div>
 
-          <h3 style="margin-top: 1.5rem;">Travaux — vue citoyenne filtrée</h3>
-          <div class="tools-grid">
-            <div class="tool">
-              <code>list_public_works</code>
-              <p>Travaux publics, IDs opaques, géométrie réduite, jamais de réf interne.</p>
-            </div>
-            <div class="tool">
-              <code>search_public_works_nearby</code>
-              <p>Travaux à proximité d'un point — sortie sanitisée pour usage public.</p>
+          <div class="tools-section">
+            <h3>Travaux — vue citoyenne filtrée</h3>
+            <div class="tools-grid">
+              <div class="tool"><code>list_public_works</code><p>Travaux publics, IDs opaques, géométrie réduite, jamais de référence interne.</p></div>
+              <div class="tool"><code>search_public_works_nearby</code><p>Travaux à proximité d'un point — sortie sanitisée pour usage public.</p></div>
             </div>
           </div>
 
-          <h3 style="margin-top: 1.5rem;">Inventaires &amp; rapports</h3>
-          <div class="tools-grid">
-            <div class="tool">
-              <code>inventory_all_layers</code>
-              <p>Snapshot complet du périmètre : tailles, fraîcheur, sensibilité.</p>
-            </div>
-            <div class="tool">
-              <code>recommend_open_data_candidates</code>
-              <p>Identifie les couches éligibles à une publication open data.</p>
-            </div>
-            <div class="tool">
-              <code>generate_inventory_report</code>
-              <p>Rapport markdown d'inventaire — utile pour gouvernance &amp; reporting.</p>
-            </div>
-            <div class="tool">
-              <code>generate_open_data_brief</code>
-              <p>Note de cadrage open data prête à exporter.</p>
-            </div>
-            <div class="tool">
-              <code>generate_chatbot_readiness_report</code>
-              <p>Auto-évaluation : ce qui est exploitable par un agent conversationnel.</p>
-            </div>
-            <div class="tool">
-              <code>generate_layer_action_plan</code>
-              <p>Plan d'action par couche : quoi corriger, quoi documenter, prioriser.</p>
+          <div class="tools-section">
+            <h3>Inventaires &amp; rapports</h3>
+            <div class="tools-grid">
+              <div class="tool"><code>inventory_all_layers</code><p>Snapshot complet du périmètre : tailles, fraîcheur, sensibilité.</p></div>
+              <div class="tool"><code>recommend_open_data_candidates</code><p>Identifie les couches éligibles à une publication open data.</p></div>
+              <div class="tool"><code>generate_inventory_report</code><p>Rapport markdown d'inventaire — utile pour gouvernance &amp; reporting.</p></div>
+              <div class="tool"><code>generate_open_data_brief</code><p>Note de cadrage open data prête à exporter.</p></div>
+              <div class="tool"><code>generate_chatbot_readiness_report</code><p>Auto-évaluation : ce qui est exploitable par un agent conversationnel.</p></div>
+              <div class="tool"><code>generate_layer_action_plan</code><p>Plan d'action par couche : quoi corriger, quoi documenter, prioriser.</p></div>
             </div>
           </div>
 
-          <p style="margin-top: 1.5rem; color: var(--text-muted); font-size: 0.92rem;">
-            Les outils <code>list_current_works</code>, <code>list_late_works</code> et
-            <code>generate_internal_dashboard_brief</code> sont
-            <strong>volontairement non exposés</strong> sur ce transport HTTP public —
-            ils restent accessibles uniquement en stdio local par la DSI Annecy.
+          <p style="margin-top: 1.5rem; padding: 0.9rem 1.1rem; background: var(--warn-soft); border-left: 4px solid var(--warn); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: 0.9rem;">
+            <strong>3 outils internal</strong> (<code>list_current_works</code>, <code>list_late_works</code>,
+            <code>generate_internal_dashboard_brief</code>) sont <strong>volontairement non exposés</strong>
+            sur ce transport HTTP public. Ils restent accessibles uniquement en
+            stdio local par la DSI Annecy avec installation dédiée.
           </p>
         </div>
       </section>
 
-      <section id="layers">
+      <!-- ============ LAYERS ============ -->
+      <section id="layers" class="alt">
         <div class="container">
           <h2>28 couches du SIG Annecy couvertes</h2>
-          <p style="color: var(--text-muted); margin-top: -0.5rem;">
-            Périmètre <em>allowlist</em> validé manuellement, schémas resynchronisés
-            chaque jour via cron CI vs. <code>portailsig.annecy.fr</code>.
+          <p class="section-lead">
+            Périmètre <strong>allowlist</strong> validé manuellement. Schémas
+            resynchronisés chaque jour via cron CI vs. <code>portailsig.annecy.fr</code>.
           </p>
 
-          <div class="grid">
-            <div class="card">
-              <h3>🏛️ Équipements</h3>
-              <p class="meta">11 couches — usage citoyen direct</p>
-              <ul class="clean">
-                <li>Administration, Établissements scolaires</li>
-                <li>Crèches, séniors, équipements sport</li>
-                <li>WC publics, jardins, vergers, salles</li>
-              </ul>
-            </div>
-            <div class="card">
-              <h3>🅿️ Mobilité</h3>
-              <p class="meta">16 couches — stationnement &amp; déplacement</p>
-              <ul class="clean">
-                <li>Parkings, vélonecy, hôtels, livraisons</li>
-                <li>PMR, motos, bornes de recharge</li>
-                <li>Horodateurs, zones bleues, bords de lac</li>
-              </ul>
-            </div>
-            <div class="card">
-              <h3>🚧 Travaux</h3>
-              <p class="meta">1 couche — vue citoyenne filtrée</p>
-              <ul class="clean">
-                <li>Sortie public-light obligatoire</li>
-                <li>IDs opaques, géométrie simplifiée</li>
-                <li>Jamais de réf marché ni de coordonnées agent</li>
-              </ul>
-            </div>
+          <div class="layers-note">
+            <strong>📢 À savoir :</strong> toutes ces couches sont
+            <strong>déjà publiquement accessibles</strong> sur le portail SIG d'Annecy.
+            Le MCP <em>n'ajoute aucune donnée</em> et n'expose <em>aucun champ sensible</em>
+            (created_user, last_edited_*, GLOBALID, url_pj, etc. — bloqués par dénylist).
+            Il les rend simplement <strong>conversables via une IA</strong>.
           </div>
 
-          <p style="margin-top: 1.5rem;">
-            <a href="https://github.com/Damso74/annecy-sig-mcp/blob/main/src/registry.ts" target="_blank" rel="noopener">
-              Voir le registre complet sur GitHub →
-            </a>
+          <details class="service" open>
+            <summary>
+              🏛️ Équipements
+              <span class="summary-meta">11 couches · service <code>EQUIPEMENTS</code></span>
+            </summary>
+            <table class="layer-table">
+              <thead>
+                <tr><th>Nom</th><th>Accès</th><th>Source ArcGIS</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Administration <span class="lid">(id 0)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/EQUIPEMENTS/MapServer/0" target="_blank" rel="noopener">MapServer/0 ↗</a></td></tr>
+                <tr><td>Établissements scolaires <span class="lid">(id 1)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/EQUIPEMENTS/MapServer/1" target="_blank" rel="noopener">MapServer/1 ↗</a></td></tr>
+                <tr><td>Accueils petite enfance <span class="lid">(id 2)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/EQUIPEMENTS/MapServer/2" target="_blank" rel="noopener">MapServer/2 ↗</a></td></tr>
+                <tr><td>Équipements sénior <span class="lid">(id 3)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/EQUIPEMENTS/MapServer/3" target="_blank" rel="noopener">MapServer/3 ↗</a></td></tr>
+                <tr><td>Cimetière <span class="lid">(id 4)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/EQUIPEMENTS/MapServer/4" target="_blank" rel="noopener">MapServer/4 ↗</a></td></tr>
+                <tr><td>WC publics <span class="lid">(id 5)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/EQUIPEMENTS/MapServer/5" target="_blank" rel="noopener">MapServer/5 ↗</a></td></tr>
+                <tr><td>Équipements culturels <span class="lid">(id 6)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/EQUIPEMENTS/MapServer/6" target="_blank" rel="noopener">MapServer/6 ↗</a></td></tr>
+                <tr><td>Jardins partagés <span class="lid">(id 7)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/EQUIPEMENTS/MapServer/7" target="_blank" rel="noopener">MapServer/7 ↗</a></td></tr>
+                <tr><td>Vergers communaux <span class="lid">(id 8)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/EQUIPEMENTS/MapServer/8" target="_blank" rel="noopener">MapServer/8 ↗</a></td></tr>
+                <tr><td>Équipements sport <span class="lid">(id 9)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/EQUIPEMENTS/MapServer/9" target="_blank" rel="noopener">MapServer/9 ↗</a></td></tr>
+                <tr><td>Salles municipales <span class="lid">(id 10)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/EQUIPEMENTS/MapServer/10" target="_blank" rel="noopener">MapServer/10 ↗</a></td></tr>
+              </tbody>
+            </table>
+          </details>
+
+          <details class="service">
+            <summary>
+              🅿️ Mobilité &amp; stationnement
+              <span class="summary-meta">16 couches · service <code>MOBILITE</code></span>
+            </summary>
+            <table class="layer-table">
+              <thead>
+                <tr><th>Nom</th><th>Accès</th><th>Source ArcGIS</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Horodateurs <span class="lid">(id 1)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/1" target="_blank" rel="noopener">MapServer/1 ↗</a></td></tr>
+                <tr><td>Parking relais <span class="lid">(id 2)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/2" target="_blank" rel="noopener">MapServer/2 ↗</a></td></tr>
+                <tr><td>Stations vélonecy <span class="lid">(id 3)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/3" target="_blank" rel="noopener">MapServer/3 ↗</a></td></tr>
+                <tr><td>Parking convoyeurs de fond <span class="lid">(id 4)</span></td><td><span class="pill pill--internal">Internal</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/4" target="_blank" rel="noopener">MapServer/4 ↗</a></td></tr>
+                <tr><td>Places hôtel <span class="lid">(id 5)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/5" target="_blank" rel="noopener">MapServer/5 ↗</a></td></tr>
+                <tr><td>Places livraison <span class="lid">(id 6)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/6" target="_blank" rel="noopener">MapServer/6 ↗</a></td></tr>
+                <tr><td>Parking moto <span class="lid">(id 7)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/7" target="_blank" rel="noopener">MapServer/7 ↗</a></td></tr>
+                <tr><td>Places PMR <span class="lid">(id 8)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/8" target="_blank" rel="noopener">MapServer/8 ↗</a></td></tr>
+                <tr><td>Bornes recharge véhicules électriques <span class="lid">(id 9)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/9" target="_blank" rel="noopener">MapServer/9 ↗</a></td></tr>
+                <tr><td>Stationnement vélos <span class="lid">(id 10)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/10" target="_blank" rel="noopener">MapServer/10 ↗</a></td></tr>
+                <tr><td>Stationnements hors parking en ouvrage <span class="lid">(id 11)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/11" target="_blank" rel="noopener">MapServer/11 ↗</a></td></tr>
+                <tr><td>Stationnement horodateurs zones longue durée <span class="lid">(id 12)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/12" target="_blank" rel="noopener">MapServer/12 ↗</a></td></tr>
+                <tr><td>Stationnement zone bleue <span class="lid">(id 13)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/13" target="_blank" rel="noopener">MapServer/13 ↗</a></td></tr>
+                <tr><td>Stationnement horodateurs bords de lac été <span class="lid">(id 14)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/14" target="_blank" rel="noopener">MapServer/14 ↗</a></td></tr>
+                <tr><td>Stationnement horodateurs zones courtes durée <span class="lid">(id 15)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/15" target="_blank" rel="noopener">MapServer/15 ↗</a></td></tr>
+                <tr><td>Annecy Parking <span class="lid">(id 16)</span></td><td><span class="pill pill--public">Public</span></td><td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/MOBILITE/MapServer/16" target="_blank" rel="noopener">MapServer/16 ↗</a></td></tr>
+              </tbody>
+            </table>
+          </details>
+
+          <details class="service">
+            <summary>
+              🚧 Travaux
+              <span class="summary-meta">1 couche · service <code>TRAVAUX</code></span>
+            </summary>
+            <table class="layer-table">
+              <thead>
+                <tr><th>Nom</th><th>Accès</th><th>Source ArcGIS</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Travaux <span class="lid">(id 3)</span></td>
+                  <td><span class="pill pill--filtered">Vue citoyenne filtrée</span></td>
+                  <td><a href="https://portailsig.annecy.fr/server/rest/services/FLUX_SITE_INTERNET/TRAVAUX/MapServer/3" target="_blank" rel="noopener">MapServer/3 ↗</a></td>
+                </tr>
+              </tbody>
+            </table>
+            <p style="margin: 0; padding: 0.8rem 1.2rem; font-size: 0.88rem; color: var(--text-muted); border-top: 1px solid var(--border);">
+              La couche brute travaux est <strong>internal</strong>. Sur le transport HTTP
+              public, l'accès se fait uniquement via les outils dédiés <code>list_public_works</code>
+              et <code>search_public_works_nearby</code> qui renvoient une vue
+              <strong>public-light</strong> (IDs opaques, géométrie réduite, jamais de référence
+              interne ni de pièce jointe).
+            </p>
+          </details>
+
+          <p style="margin-top: 1.5rem; font-size: 0.92rem;">
+            Voir le <a href="https://github.com/Damso74/annecy-sig-mcp/blob/main/src/registry.ts" target="_blank" rel="noopener">registre source complet sur GitHub</a>
+            ou consulter le <a href="https://github.com/Damso74/annecy-sig-mcp/blob/main/docs/DATA_CATALOG_PUBLIC_REMOTE.md" target="_blank" rel="noopener">catalogue détaillé des données</a>.
           </p>
         </div>
       </section>
 
+      <!-- ============ SECURITY ============ -->
       <section id="security">
         <div class="container">
           <h2>Sécurité &amp; gouvernance</h2>
-          <p style="color: var(--text-muted); margin-top: -0.5rem;">
+          <p class="section-lead">
             Conçu pour exposer de la donnée publique sans risque de fuite ni de side-effect.
           </p>
 
-          <div class="secdl" style="margin-top: 1rem;">
+          <div class="secdl">
             <div>
               <strong>✓ Lecture seule, allowlist d'hôtes</strong>
-              <small>
-                Aucune requête sortante hors <code>portailsig.annecy.fr</code>.
-                Aucune route POST/PUT/DELETE vers ArcGIS dans le code source.
-              </small>
+              <small>Aucune requête sortante hors <code>portailsig.annecy.fr</code>. Aucune route POST/PUT/DELETE vers ArcGIS dans le code.</small>
             </div>
             <div>
               <strong>✓ Authentification Bearer obligatoire</strong>
-              <small>
-                Le transport HTTP refuse toute requête sans <code>Authorization: Bearer</code>
-                valide. Comparaison à temps constant.
-              </small>
+              <small>Le transport HTTP refuse toute requête sans <code>Authorization: Bearer</code> valide. Comparaison à temps constant.</small>
             </div>
             <div>
               <strong>✓ Mode <code>internal</code> verrouillé HTTP</strong>
-              <small>
-                Toute tentative d'élévation côté HTTP retourne 403. Le mode internal
-                reste exclusivement réservé au transport stdio local DSI.
-              </small>
+              <small>Toute tentative d'élévation côté HTTP retourne 403. Le mode internal est exclusivement réservé au transport stdio local DSI.</small>
             </div>
             <div>
               <strong>✓ Sanitation systématique</strong>
-              <small>
-                Champs sensibles (created_user, last_edited_*, url_pj, GLOBALID, etc.)
-                bloqués par filtre dénylist appliqué au moment de la génération du registre.
-              </small>
+              <small>Champs sensibles (<code>created_user</code>, <code>last_edited_*</code>, <code>url_pj</code>, <code>GLOBALID</code>…) bloqués par filtre dénylist au moment de la génération du registre.</small>
             </div>
             <div class="no">
               <strong>✗ Pas de cookies, pas de sessions</strong>
-              <small>
-                Stateless complet. Aucun stockage côté serveur. Aucun tracking utilisateur.
-              </small>
+              <small>Stateless complet. Aucun stockage côté serveur. Aucun tracking utilisateur.</small>
             </div>
             <div class="no">
               <strong>✗ Pas d'écriture ArcGIS</strong>
-              <small>
-                Le serveur ne peut techniquement pas modifier le SIG : pas de credentials
-                d'éditeur, pas de méthodes <code>applyEdits</code>, pas de chemin code l'autorisant.
-              </small>
+              <small>Le serveur ne peut techniquement pas modifier le SIG : pas de credentials d'éditeur, pas de méthodes <code>applyEdits</code>, pas de chemin code l'autorisant.</small>
             </div>
           </div>
 
           <p style="margin-top: 1.5rem; font-size: 0.92rem; color: var(--text-muted);">
-            Détail complet du modèle de menace, périmètre, et procédure de divulgation
-            responsable :
-            <a href="https://github.com/Damso74/annecy-sig-mcp/blob/main/docs/SECURITY.md" target="_blank" rel="noopener">
-              docs/SECURITY.md ↗
-            </a>
+            Détail complet du modèle de menace, périmètre et procédure de divulgation responsable :
+            <a href="https://github.com/Damso74/annecy-sig-mcp/blob/main/docs/SECURITY.md" target="_blank" rel="noopener">docs/SECURITY.md ↗</a>
           </p>
         </div>
       </section>
 
-      <section id="endpoints">
+      <!-- ============ FAQ ============ -->
+      <section id="faq" class="alt">
         <div class="container">
-          <h2>Endpoints &amp; observabilité</h2>
-          <div class="grid">
-            <div class="card">
-              <h3><a href="/api/health" target="_blank" rel="noopener">/api/health</a></h3>
-              <p class="meta">GET — public, sans Bearer</p>
-              <p style="margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--text-muted);">
-                Diagnostic léger : version, mode, uptime, stats cache ArcGIS, dernière erreur.
-                Aucun appel ArcGIS déclenché.
-              </p>
+          <h2>Questions fréquentes</h2>
+          <p class="section-lead">Si votre question n'est pas listée, écrivez à <a href="mailto:damien.credoz@annecy.fr">damien.credoz@annecy.fr</a>.</p>
+
+          <details class="faq">
+            <summary>Qui peut demander un accès ?</summary>
+            <div>
+              <p>Tout le monde : citoyens, journalistes, chercheurs, autres collectivités, développeurs, étudiants, agents de la Ville d'Annecy, partenaires métropolitains. Le service est ouvert à tout usage légitime des données publiques du SIG.</p>
+              <p>Précisez simplement votre cas d'usage dans votre demande pour qu'on puisse vous orienter au mieux.</p>
             </div>
-            <div class="card">
-              <h3><code>/api/mcp</code></h3>
-              <p class="meta">POST — Bearer requis, JSON-RPC</p>
-              <p style="margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--text-muted);">
-                Endpoint MCP Streamable HTTP. En-têtes attendus :
-                <code>Accept: application/json, text/event-stream</code>,
-                <code>MCP-Protocol-Version</code>.
-              </p>
+          </details>
+
+          <details class="faq">
+            <summary>Combien ça coûte ?</summary>
+            <div>
+              <p>Rien. Le code est open source (licence MIT) et l'instance hébergée sur <code>mcp.leadalpes.fr</code> est mise à disposition gratuitement.</p>
+              <p>Si votre usage devient massif (dizaines de milliers de requêtes/jour), prévenez-nous pour qu'on dimensionne ensemble.</p>
             </div>
+          </details>
+
+          <details class="faq">
+            <summary>Mes requêtes sont-elles loguées ?</summary>
+            <div>
+              <p>Côté serveur : seuls les logs techniques agrégés (compteur d'appels par outil, dernière erreur) sont retenus, sans contenu des requêtes ni identifiant utilisateur. Voir <a href="/api/health" target="_blank" rel="noopener">/api/health</a>.</p>
+              <p>Côté client (Cursor, Claude Desktop…) : les logs dépendent de leur propre politique de confidentialité.</p>
+            </div>
+          </details>
+
+          <details class="faq">
+            <summary>Puis-je l'utiliser à des fins commerciales ?</summary>
+            <div>
+              <p>Le code est sous licence MIT, donc oui pour le code. Pour les <strong>données</strong>, vérifiez les conditions de réutilisation indiquées sur le portail SIG d'Annecy : la majorité relève de la donnée publique réutilisable, mais certains usages spécifiques peuvent demander une licence ou une mention.</p>
+            </div>
+          </details>
+
+          <details class="faq">
+            <summary>Quels clients IA sont compatibles ?</summary>
+            <div>
+              <p>Tout client supportant <strong>MCP Streamable HTTP</strong> avec authentification Bearer : Cursor, Claude Desktop, Continue, n8n, Copilot Studio, Microsoft Copilot Custom, ainsi que tout agent custom écrit avec un SDK MCP (TypeScript, Python).</p>
+              <p>Les clients qui ne supportent que MCP stdio nécessitent une installation locale (voir le README DSI sur GitHub).</p>
+            </div>
+          </details>
+
+          <details class="faq">
+            <summary>Une couche manque, comment la demander ?</summary>
+            <div>
+              <p>Ouvrez une issue sur <a href="https://github.com/Damso74/annecy-sig-mcp/issues" target="_blank" rel="noopener">GitHub</a> ou écrivez-nous. Toute couche ajoutée doit être déjà publique sur le portail SIG, et passe par une revue d'allowlist (sécurité, sanitation des champs).</p>
+            </div>
+          </details>
+
+          <details class="faq">
+            <summary>Le serveur est down, je fais quoi ?</summary>
+            <div>
+              <p>Vérifiez d'abord <a href="/api/health" target="_blank" rel="noopener">/api/health</a> : s'il répond <code>status: ok</code>, le souci est côté client ou côté ArcGIS source. Sinon, signalez-nous l'incident par mail avec l'heure UTC approximative.</p>
+            </div>
+          </details>
+
+          <details class="faq">
+            <summary>Je veux héberger ma propre instance</summary>
+            <div>
+              <p>Le repo est prêt pour Vercel (déploiement en 1 clic) ou tout runtime Node 20+. Le déploiement minimal demande deux variables : <code>ANNECY_SIG_BASE_URL</code> et <code>MCP_PUBLIC_READ_TOKEN</code>. Voir le <a href="https://github.com/Damso74/annecy-sig-mcp/blob/main/README.md" target="_blank" rel="noopener">README sur GitHub</a>.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ============ CONTACT ============ -->
+      <section id="contact">
+        <div class="container">
+          <div class="contact-card">
+            <h2>Prêt·e à brancher votre IA au SIG d'Annecy ?</h2>
+            <p>Demandez un jeton d'accès — ou posez n'importe quelle question sur l'intégration. Réponse sous quelques jours ouvrés.</p>
+            <p style="margin-bottom: 0;">
+              <a href="mailto:damien.credoz@annecy.fr?subject=Demande%20d'acc%C3%A8s%20annecy-sig-mcp&body=Bonjour%2C%0A%0AJe%20souhaite%20utiliser%20le%20serveur%20annecy-sig-mcp.%0A%0AContexte%20%2F%20cas%20d'usage%20%3A%20%0A%0AOrganisation%20%2F%20fonction%20%3A%20%0A%0AClient%20MCP%20envisag%C3%A9%20(Cursor%2C%20Claude%20Desktop%2C%20autre)%20%3A%20%0A%0AMerci."
+                 class="btn btn--primary">
+                ✉ damien.credoz@annecy.fr
+              </a>
+              <a href="https://github.com/Damso74/annecy-sig-mcp/issues/new" class="btn" target="_blank" rel="noopener">
+                💬 Ouvrir une issue GitHub
+              </a>
+            </p>
           </div>
         </div>
       </section>
@@ -638,16 +1111,46 @@
 
     <footer class="bottom">
       <div class="container">
-        <div class="links">
-          <a href="https://github.com/Damso74/annecy-sig-mcp" target="_blank" rel="noopener">GitHub</a>
-          <a href="https://github.com/Damso74/annecy-sig-mcp/blob/main/docs/SECURITY.md" target="_blank" rel="noopener">Sécurité</a>
-          <a href="https://www.annecy.fr/" target="_blank" rel="noopener">Ville d'Annecy</a>
-          <a href="https://portailsig.annecy.fr/" target="_blank" rel="noopener">Portail SIG</a>
+        <div class="footer-grid">
+          <div class="footer-col">
+            <h4>annecy-sig-mcp</h4>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
+              Le serveur MCP officiel pour conversabiliser le SIG public de la Ville
+              d'Annecy depuis n'importe quelle IA compatible MCP. Open source, MIT.
+            </p>
+          </div>
+          <div class="footer-col">
+            <h4>Produit</h4>
+            <ul>
+              <li><a href="#start">Démarrer</a></li>
+              <li><a href="#tools">Outils MCP</a></li>
+              <li><a href="#layers">Couches</a></li>
+              <li><a href="#faq">FAQ</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Technique</h4>
+            <ul>
+              <li><a href="/api/health" target="_blank" rel="noopener">/api/health</a></li>
+              <li><a href="https://github.com/Damso74/annecy-sig-mcp" target="_blank" rel="noopener">GitHub</a></li>
+              <li><a href="https://github.com/Damso74/annecy-sig-mcp/blob/main/docs/SECURITY.md" target="_blank" rel="noopener">Sécurité</a></li>
+              <li><a href="https://github.com/Damso74/annecy-sig-mcp/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Sources</h4>
+            <ul>
+              <li><a href="https://portailsig.annecy.fr/" target="_blank" rel="noopener">Portail SIG Annecy</a></li>
+              <li><a href="https://www.annecy.fr/" target="_blank" rel="noopener">Ville d'Annecy</a></li>
+              <li><a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a></li>
+            </ul>
+          </div>
         </div>
-        <p style="margin: 0.4rem 0 0;">
+        <div class="footer-bottom">
           annecy-sig-mcp · MIT · transport HTTP via Vercel Functions ·
-          <span id="footer-version">v—</span>
-        </p>
+          <span id="footer-version">v—</span> ·
+          contact <a href="mailto:damien.credoz@annecy.fr">damien.credoz@annecy.fr</a>
+        </div>
       </div>
     </footer>
 
@@ -656,14 +1159,12 @@
       (async function () {
         const pill = document.getElementById("health-pill");
         const txt = document.getElementById("health-text");
-        const verBadge = document.getElementById("version-badge");
         const verFooter = document.getElementById("footer-version");
         try {
           const r = await fetch("/api/health", { cache: "no-store" });
           if (!r.ok) throw new Error("HTTP " + r.status);
           const j = await r.json();
           const ver = j.serverVersion || "?";
-          if (verBadge) verBadge.textContent = "v" + ver;
           if (verFooter) verFooter.textContent = "v" + ver;
           if (j.status === "ok") {
             pill.classList.add("health-pill--ok");
@@ -672,7 +1173,7 @@
               upMin >= 1440 ? Math.floor(upMin / 1440) + " j"
               : upMin >= 60 ? Math.floor(upMin / 60) + " h"
               : upMin + " min";
-            txt.textContent = `Service OK · v${ver} · uptime ${upTxt}`;
+            txt.textContent = `Service en ligne · v${ver} · uptime ${upTxt}`;
           } else {
             pill.classList.add("health-pill--err");
             txt.textContent = "Service en erreur — voir /api/health";
@@ -692,7 +1193,11 @@
             await navigator.clipboard.writeText(target.innerText);
             const old = btn.textContent;
             btn.textContent = "✓ Copié";
-            setTimeout(() => (btn.textContent = old), 1600);
+            btn.classList.add("copied");
+            setTimeout(() => {
+              btn.textContent = old;
+              btn.classList.remove("copied");
+            }, 1600);
           } catch {
             btn.textContent = "Erreur";
           }
