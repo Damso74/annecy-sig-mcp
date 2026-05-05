@@ -1,4 +1,4 @@
-name: 📍 Demander l'ajout d'une couche SIG
+name: Demander l'ajout d'une couche SIG
 description: Demander l'ajout d'une couche déjà publique sur portailsig.annecy.fr.
 labels: ["layer-request"]
 body:

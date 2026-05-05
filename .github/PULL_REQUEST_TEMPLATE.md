@@ -11,12 +11,12 @@ Closes #
 
 ## Type de changement
 
-- [ ] 🐛 Bug fix (changement non breaking corrigeant un comportement)
-- [ ] ✨ Nouvelle fonctionnalité (changement non breaking ajoutant du comportement)
-- [ ] 💥 Breaking change (modification de contrat ou de comportement existant)
-- [ ] 📚 Documentation seule
-- [ ] 🔧 Outillage / refacto interne (sans impact comportemental)
-- [ ] 📍 Ajout d'une couche au registre
+- [ ] Bug fix (changement non breaking corrigeant un comportement)
+- [ ] Nouvelle fonctionnalité (changement non breaking ajoutant du comportement)
+- [ ] Breaking change (modification de contrat ou de comportement existant)
+- [ ] Documentation seule
+- [ ] Outillage / refacto interne (sans impact comportemental)
+- [ ] Ajout d'une couche au registre
 
 ## Checklist
 

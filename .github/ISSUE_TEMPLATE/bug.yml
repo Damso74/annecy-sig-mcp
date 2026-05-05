@@ -1,4 +1,4 @@
-name: 🐛 Bug report
+name: Bug report
 description: Signaler un comportement inattendu du serveur MCP.
 labels: ["bug"]
 body:

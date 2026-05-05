@@ -19,15 +19,15 @@ n8n, ChatGPT MCP, agent custom…
 
 ---
 
-## 🚀 Vous voulez juste **utiliser** le MCP ?
+## Vous voulez juste **utiliser** le MCP ?
 
-C'est par ici, pas besoin de cloner le repo :
+C'est par ici, pas besoin de cloner le dépôt :
 
-| Vous êtes… | Allez voir |
+| Profil | Où aller |
 | --- | --- |
-| 👤 **Citoyen·ne, dev, autre collectivité** qui veut interroger le SIG depuis son IA | 👉 [**mcp.leadalpes.fr**](https://mcp.leadalpes.fr/) — landing publique avec démarrage en 3 étapes |
-| 🏛️ **DSI / agent Ville d'Annecy** qui veut le mode internal local | 👉 [**docs/README-DSI-Annecy.md**](docs/README-DSI-Annecy.md) — onboarding 15 min |
-| 💻 **Développeur·euse** qui veut comprendre le code, contribuer ou héberger une instance | 👉 Continuez ici 👇 |
+| **Citoyen, développeur, autre collectivité** qui veut interroger le SIG depuis son IA | [**mcp.leadalpes.fr**](https://mcp.leadalpes.fr/) — landing publique avec démarrage en 3 étapes |
+| **DSI / agent Ville d'Annecy** qui veut le mode internal local | [**docs/README-DSI-Annecy.md**](docs/README-DSI-Annecy.md) — onboarding 15 min |
+| **Développeurs** qui veulent comprendre le code, contribuer ou héberger une instance | Suite de ce README |
 
 ---
 
@@ -79,7 +79,7 @@ DEFAULT_MODE=public         # ou "internal" pour DSI
 CONTRACT_POLICY=warn        # "strict" en CI/dev, "silent" pour les benchs
 ```
 
-> ⚠️ Le serveur communique en **stdio**. **Ne pas brancher d'autre logger sur stdout** :
+> **Attention.** Le serveur communique en **stdio**. **Ne pas brancher d'autre logger sur stdout** :
 > le transport MCP s'en sert pour le protocole. Tous les logs vont sur **stderr**
 > au format NDJSON.
 

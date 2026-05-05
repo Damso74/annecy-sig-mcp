@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 📧 Demander un jeton d'accès au serveur public
+  - name: Demander un jeton d'accès au serveur public
     url: mailto:damien.credoz@annecy.fr
-    about: Pour récupérer un Bearer token et utiliser https://mcp.leadalpes.fr/api/mcp
-  - name: 🔒 Signaler une vulnérabilité de sécurité
+    about: Pour récupérer un Bearer token et utiliser https://mcp.leadalpes.fr/api/mcp ou obtenir de l'aide à la configuration.
+  - name: Signaler une vulnérabilité de sécurité
     url: https://github.com/Damso74/annecy-sig-mcp/blob/main/SECURITY.md
     about: Ne pas ouvrir d'issue publique. Suivre la procédure SECURITY.md.
-  - name: 📚 Documentation utilisateur
+  - name: Documentation utilisateur
     url: https://mcp.leadalpes.fr/
     about: Page d'accueil avec démarrage en 3 étapes, FAQ et liste des couches.
