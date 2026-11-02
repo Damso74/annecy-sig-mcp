@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v3";
 import {
   CHATBOT_SCHEMA_VERSION,
   INTERNAL_DASHBOARD_SCHEMA_VERSION,

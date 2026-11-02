@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v3";
 import { AppError } from "./errors.js";
 import type { AppConfig } from "../config.js";
 import { getLayerEntry, isServiceKeyAllowed, listLayerEntriesForService } from "../registry.js";

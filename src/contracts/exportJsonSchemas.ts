@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import type { ZodTypeAny } from "zod";
+import type { ZodTypeAny } from "zod/v3";
 import {
   ChatbotReadinessReportSchema,
   InternalDashboardBriefSchema,

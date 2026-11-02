@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
+import { z } from "zod/v3";
 import type { AppConfig } from "./config.js";
 import { modeSchema } from "./utils/validation.js";
 import { isAppError, AppError } from "./utils/errors.js";
