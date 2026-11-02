@@ -1,4 +1,4 @@
-import type { ZodTypeAny } from "zod";
+import type { ZodTypeAny } from "zod/v3";
 
 /**
  * Helper de validation contractuelle (V0.8 / V0.9).
