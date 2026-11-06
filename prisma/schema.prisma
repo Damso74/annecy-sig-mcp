@@ -1,0 +1,106 @@
+// Schéma représentatif CRM / campagnes / PAP / formulaires — réservé aux tests de charge locaux.
+// Aucune connexion distante ; utiliser uniquement via docker-compose et PERF_DATABASE_URL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("PERF_DATABASE_URL")
+}
+
+enum ContactStatus {
+  ACTIVE
+  UNSUBSCRIBED
+  BOUNCED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  COMPLETED
+}
+
+enum PapSessionOutcome {
+  PENDING
+  RESOLVED
+  ESCALATED
+}
+
+enum InboundStatus {
+  NEW
+  TRIAGED
+  CLOSED
+}
+
+model Contact {
+  id         String        @id @default(cuid())
+  email      String        @unique
+  firstName  String
+  lastName   String
+  status     ContactStatus @default(ACTIVE)
+  city       String
+  segment    String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  campaignSends EmailCampaignContact[]
+  papSessions   PapSession[]
+  formInbounds  FormInbound[]
+
+  @@index([status, city, updatedAt(sort: Desc)])
+}
+
+model EmailCampaign {
+  id          String         @id @default(cuid())
+  name        String
+  status      CampaignStatus @default(DRAFT)
+  scheduledAt DateTime?
+  createdAt   DateTime       @default(now())
+
+  sends EmailCampaignContact[]
+}
+
+// Association campagne ↔ contact (envois / ciblages).
+model EmailCampaignContact {
+  id         String   @id @default(cuid())
+  campaignId String
+  contactId  String
+  sentAt     DateTime?
+  openedAt   DateTime?
+
+  campaign EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([contactId])
+}
+
+model PapSession {
+  id        String            @id @default(cuid())
+  contactId String
+  channel   String
+  outcome   PapSessionOutcome @default(PENDING)
+  startedAt DateTime
+  endedAt   DateTime?
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, startedAt])
+}
+
+model FormInbound {
+  id        String        @id @default(cuid())
+  contactId String?
+  email     String
+  subject   String
+  body      String
+  status    InboundStatus @default(NEW)
+  createdAt DateTime      @default(now())
+
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt(sort: Desc)])
+}

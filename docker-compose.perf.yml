@@ -1,0 +1,17 @@
+# Postgres jetable pour les tests de charge Prisma (usage local uniquement).
+services:
+  perf-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: perf
+      POSTGRES_PASSWORD: perf
+      POSTGRES_DB: perf_load
+    ports:
+      - "54333:5432"
+    volumes:
+      - ./scripts/perf/init-pg.sql:/docker-entrypoint-initdb.d/01-extensions.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U perf -d perf_load"]
+      interval: 2s
+      timeout: 5s
+      retries: 10

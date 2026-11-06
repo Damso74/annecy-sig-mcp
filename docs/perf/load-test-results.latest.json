@@ -1,0 +1,100 @@
+{
+  "generatedAt": "2026-11-06T13:38:53.602Z",
+  "scale": 100,
+  "phases": [
+    {
+      "phase": "before_indexes",
+      "results": [
+        {
+          "name": "listContactsFiltered",
+          "iterations": 40,
+          "p50Ms": 41.75,
+          "p95Ms": 42.8,
+          "sqlCountPerIteration": 1
+        },
+        {
+          "name": "searchContactsTrigram",
+          "iterations": 15,
+          "p50Ms": 319.46,
+          "p95Ms": 348.09,
+          "sqlCountPerIteration": 1
+        },
+        {
+          "name": "campaignRecipientsJoin",
+          "iterations": 25,
+          "p50Ms": 45.22,
+          "p95Ms": 48.75,
+          "sqlCountPerIteration": 2
+        },
+        {
+          "name": "dashboardAggregates",
+          "iterations": 25,
+          "p50Ms": 114.93,
+          "p95Ms": 122.01,
+          "sqlCountPerIteration": 6
+        },
+        {
+          "name": "papSessionsByContact",
+          "iterations": 25,
+          "p50Ms": 49.46,
+          "p95Ms": 54.27,
+          "sqlCountPerIteration": 1
+        },
+        {
+          "name": "formInboundQueue",
+          "iterations": 40,
+          "p50Ms": 50.87,
+          "p95Ms": 53.53,
+          "sqlCountPerIteration": 1
+        }
+      ]
+    },
+    {
+      "phase": "after_indexes",
+      "results": [
+        {
+          "name": "listContactsFiltered",
+          "iterations": 40,
+          "p50Ms": 36.39,
+          "p95Ms": 37.59,
+          "sqlCountPerIteration": 1
+        },
+        {
+          "name": "searchContactsTrigram",
+          "iterations": 15,
+          "p50Ms": 318.12,
+          "p95Ms": 329.79,
+          "sqlCountPerIteration": 1
+        },
+        {
+          "name": "campaignRecipientsJoin",
+          "iterations": 25,
+          "p50Ms": 37.45,
+          "p95Ms": 39.95,
+          "sqlCountPerIteration": 2
+        },
+        {
+          "name": "dashboardAggregates",
+          "iterations": 25,
+          "p50Ms": 98.75,
+          "p95Ms": 103.5,
+          "sqlCountPerIteration": 6
+        },
+        {
+          "name": "papSessionsByContact",
+          "iterations": 25,
+          "p50Ms": 35.64,
+          "p95Ms": 36.33,
+          "sqlCountPerIteration": 1
+        },
+        {
+          "name": "formInboundQueue",
+          "iterations": 40,
+          "p50Ms": 36.16,
+          "p95Ms": 37.12,
+          "sqlCountPerIteration": 1
+        }
+      ]
+    }
+  ]
+}

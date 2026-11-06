@@ -280,7 +280,11 @@ Workflow standard : fork → branche `feat/...` ou `fix/...` → PR avec tests.
 La CI exécute build + typecheck + vitest + `schemas:check` + `smoke:mcp` + `audit:check`.
 Un cron quotidien `check:registry` vérifie le drift ArcGIS.
 
-## 10. Contact &amp; support
+## 10. Tests de charge Prisma / Postgres (local, optionnel)
+
+Le dépôt embarque un schéma **benchmark** (`prisma/`) et des scripts de seed / charge : voir [`docs/perf/README.md`](docs/perf/README.md). Aucune base distante : uniquement Docker ou une instance Postgres locale, variable **`PERF_DATABASE_URL`**.
+
+## 11. Contact &amp; support
 
 - **Demande de jeton d'accès / aide à l'intégration** :
   [damien.credoz@annecy.fr](mailto:damien.credoz@annecy.fr)
@@ -289,7 +293,7 @@ Un cron quotidien `check:registry` vérifie le drift ArcGIS.
 - **Faille de sécurité** : ne pas ouvrir d'issue publique. Voir
   [`SECURITY.md`](SECURITY.md) pour la procédure (GitHub Security Advisory privé ou mail).
 
-## 11. Licence
+## 12. Licence
 
 [MIT](LICENSE) — usage libre, y compris commercial. Les **données** restent
 soumises aux conditions d'utilisation du portail SIG d'Annecy.

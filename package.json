@@ -20,7 +20,16 @@
     "smoke:http": "tsx scripts/smoke-http.ts",
     "smoke:prod": "tsx scripts/smoke-prod.ts",
     "sync:registry": "tsx scripts/sync-registry-from-arcgis.ts",
-    "check:registry": "tsx scripts/sync-registry-from-arcgis.ts --check"
+    "check:registry": "tsx scripts/sync-registry-from-arcgis.ts --check",
+    "perf:compose:up": "docker compose -f docker-compose.perf.yml up -d",
+    "perf:compose:down": "docker compose -f docker-compose.perf.yml down -v",
+    "perf:migrate": "prisma migrate deploy",
+    "perf:seed": "tsx scripts/perf/seed-load-test.ts",
+    "perf:load-test": "tsx scripts/perf/run-load-suite.ts",
+    "perf:full": "npm run perf:migrate && npm run perf:seed && npm run perf:load-test",
+    "perf:all-scales": "tsx scripts/perf/run-all-scales.ts",
+    "perf:report": "tsx scripts/perf/write-report.ts",
+    "perf:ci-local": "npm run perf:compose:up && sleep 3 && cross-env \"PERF_DATABASE_URL=postgresql://perf:perf@127.0.0.1:54333/perf_load?schema=public\" prisma generate && cross-env \"PERF_DATABASE_URL=postgresql://perf:perf@127.0.0.1:54333/perf_load?schema=public\" npm run perf:migrate && cross-env \"PERF_DATABASE_URL=postgresql://perf:perf@127.0.0.1:54333/perf_load?schema=public\" npm run perf:all-scales && cross-env \"PERF_DATABASE_URL=postgresql://perf:perf@127.0.0.1:54333/perf_load?schema=public\" npm run perf:report"
   },
   "engines": {
     "node": ">=20"
@@ -34,11 +43,14 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
+    "@prisma/client": "^6.19.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^3.2.4",
+    "cross-env": "^7.0.3",
+    "prisma": "^6.19.0",
     "tsx": "^4.23.15",
     "typescript": "^5.7.2",
     "vitest": "^3.0.5",
